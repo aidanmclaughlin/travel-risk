@@ -79,35 +79,46 @@ export default function LiveDashboard({
   const stdPct = today ? Math.round((today.stddev || 0) * 1000) / 10 : null;
   const runs = today?.runCount ?? null;
 
+  const heat = (v: number | null) => {
+    const x = v == null ? 0 : Math.max(0, Math.min(100, v));
+    const hue = 120 - x * 1.2; // green -> red
+    return `hsl(${hue}, 72%, 44%)`;
+  };
+
   return (
-    <div className="space-y-4 overflow-hidden">
-      <section className="px-2 sm:px-4 text-center">
-        <div className="muted text-sm">Today</div>
-        <div className="mt-1 text-6xl sm:text-7xl font-bold tracking-tight">
-          {avgPct !== null ? (
-            <span>
-              {avgPct}%
-              {typeof stdPct === "number" ? (
-                <span className="text-2xl sm:text-3xl align-middle ml-3 text-gray-500">± {stdPct}%</span>
-              ) : null}
-            </span>
-          ) : (
-            <span className="opacity-60">—</span>
-          )}
+    <div className="space-y-3 overflow-hidden">
+      <section className="px-2 sm:px-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Daily Travel Risk</h2>
+          <div className="font-bold tracking-tight" style={{ color: heat(avgPct) }}>
+            <span className="text-4xl sm:text-5xl">{avgPct !== null ? `${avgPct}%` : '—'}</span>
+            {typeof stdPct === 'number' && (
+              <span className="ml-2 text-sm sm:text-base text-gray-500 align-middle">± {stdPct}%</span>
+            )}
+          </div>
         </div>
-        <div className="mt-2 text-xs text-gray-500 flex items-center justify-center gap-3">
+        <div className="mt-1 text-[11px] sm:text-xs text-gray-500 flex items-center gap-3">
           {today?.computedAt && <span>Updated {new Date(today.computedAt).toLocaleString()}</span>}
           {typeof runs === 'number' && <span>• Runs {runs}</span>}
         </div>
       </section>
 
-      <section className="px-1 sm:px-2 lg:px-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm muted">Risk over time</div>
-          <div className="text-xs text-gray-500">{loading ? "Refreshing…" : "Live"}</div>
-        </div>
-        <div className="h-[58dvh] sm:h-[60dvh] lg:h-[62dvh]">
+      <section className="px-1 sm:px-2 lg:px-3 relative">
+        <div className="absolute right-3 top-0 text-[10px] text-gray-500">{loading ? 'Refreshing…' : 'Live'}</div>
+        <div className="h-[66dvh] sm:h-[70dvh] lg:h-[72dvh] relative">
           <HistoryLine labels={labels} values={values} stds={stds} />
+          <button
+            aria-label="Open report"
+            onClick={() => setShowReport(true)}
+            className="absolute left-1/2 -translate-x-1/2 bottom-1 sm:bottom-2 opacity-80 hover:opacity-100 transition-opacity"
+          >
+            <div className="flex flex-col items-center text-[10px] sm:text-xs text-gray-600">
+              <svg className="animate-bounce-slow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              <span className="mt-0.5">Scroll for report</span>
+            </div>
+          </button>
         </div>
       </section>
 

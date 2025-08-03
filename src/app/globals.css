@@ -48,3 +48,10 @@ body {
   60%  { transform: translateY(-2px) scale(1.02); opacity: 1; }
   100% { transform: translateY(0) scale(1); }
 }
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-bounce-slow { animation: bounce-slow 1.6s ease-in-out infinite; }
