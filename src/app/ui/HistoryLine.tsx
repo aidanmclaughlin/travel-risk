@@ -26,6 +26,13 @@ ChartJS.register(
 );
 
 export default function HistoryLine({ labels, values, stds }: { labels: string[]; values: number[]; stds: number[] }) {
+  const colorFor = (v: number) => {
+    // v is percentage 0..100; map 0->green, 100->red using HSL
+    const clamped = Math.max(0, Math.min(100, v));
+    const hue = 120 - (clamped * 1.2); // 120 (green) down to ~0 (red)
+    return `hsl(${hue}, 70%, 45%)`;
+  };
+
   const data = useMemo<ChartData<'line', number[], string>>(() => ({
     labels,
     datasets: [
@@ -49,7 +56,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
           const { chart } = ctx;
           const { ctx: c } = chart;
           const g = c.createLinearGradient(0, 0, 0, 120);
-          g.addColorStop(0, "rgba(17,24,39,0.22)");
+          g.addColorStop(0, "rgba(37,99,235,0.18)");
           g.addColorStop(1, "rgba(17,24,39,0)");
           return g;
         },
@@ -62,13 +69,34 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       {
         label: "Avg risk %",
         data: values,
-        borderColor: "#111827",
-        backgroundColor: "rgba(0,0,0,0)",
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37,99,235,0.2)",
         borderWidth: 3,
         fill: false,
         tension: 0.35,
         pointRadius: 0,
         pointHoverRadius: 3,
+      },
+      // Heat-colored points overlay
+      {
+        label: "Points",
+        data: values,
+        borderColor: "rgba(0,0,0,0)",
+        backgroundColor: (ctx: ScriptableContext<'line'>) => {
+          const i = ctx.dataIndex;
+          const v = values[i] ?? 0;
+          return colorFor(v);
+        },
+        pointBackgroundColor: (ctx: ScriptableContext<'line'>) => {
+          const i = ctx.dataIndex;
+          const v = values[i] ?? 0;
+          return colorFor(v);
+        },
+        pointBorderColor: 'white',
+        pointBorderWidth: 1,
+        showLine: false,
+        pointRadius: 3,
+        pointHoverRadius: 6,
       },
     ],
   }), [labels, values, stds]);
