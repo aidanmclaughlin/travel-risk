@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { SingleEstimate } from './types';
 
 const SIMULATE = (process.env.SIMULATE_DEEP_RESEARCH ?? '').toLowerCase() === 'true' || !process.env.OPENAI_API_KEY;
-const MODEL = process.env.DR_MODEL || 'o3-deep-research';
+const MODEL = process.env.DR_MODEL || 'o3';
 
 const OutputSchema = z.object({
   probability: z.number().min(0).max(1),
@@ -30,10 +30,6 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   const resp = await client.responses.create({
     model: MODEL,
     input,
-    tools: [
-      { type: 'web_search_preview' },
-      { type: 'code_interpreter', container: { type: 'auto' } },
-    ],
     max_output_tokens: 2000,
   });
 
@@ -51,7 +47,7 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   const prob = extractProbability(text);
   return {
     probability: prob ?? 0.2,
-    report: text.slice(0, 4000) || 'Deep research returned no text.',
+    report: text.slice(0, 4000) || 'Model returned no text.',
     citations: [],
   };
 }
@@ -64,8 +60,7 @@ Task: Estimate the probability that a U.S. non-citizen traveler who departs the 
 Origin: United States. Estimate an all-destinations aggregate risk (U.S. to any country), weighted toward common destinations and current U.S. policy signals.
 
 Do:
-- Use only up-to-date, reputable sources. Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), major airlines/airport advisories, and reputable press.
-- Use web search to find recent policy actions or executive orders and credible reporting of enforcement patterns affecting non-citizens.
+- Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), airline/airport advisories, and reputable press when citing.
 - Consider traveler variability: visa categories, countries of origin, and recent policy changes. When aggregating, be conservative.
 - Return a single probability in [0,1]. The probability should reflect the base rate for a typical non-citizen traveler under current conditions.
 - Include a concise reasoning summary and citations.

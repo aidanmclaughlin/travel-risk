@@ -67,9 +67,10 @@ Use your `COMPUTE_SECRET` to trigger a 25-run compute on demand:
 curl "https://your-domain.vercel.app/api/daily?compute=1&secret=YOUR_TOKEN"
 ```
 
-Optional parameter:
+Optional parameters:
 
 - `day=YYYY-MM-DD` to compute for a specific date
+- `count=5` to temporarily reduce the number of runs for testing (max 25)
 
 Production and scheduling
 -------------------------

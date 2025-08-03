@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, data: existing });
   }
 
-  // Hardcode run count to 25 independent runs
-  const runCount = 25;
+  // Single run to de-risk cost/latency
+  const runCount = 1;
   const estimates: number[] = [];
   const reports: string[] = [];
   const citationsList: { url: string; title?: string }[][] = [];
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
 
   const result: DailyResult = {
     date,
-    model: process.env.DR_MODEL || 'o3-deep-research',
+    model: process.env.DR_MODEL || 'o3',
     runCount,
     average: avg,
     median,
