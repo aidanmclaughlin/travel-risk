@@ -68,6 +68,14 @@ export default function LiveDashboard({
         {today?.computedAt && (
           <div className="mt-2 text-xs text-gray-500">Updated {new Date(today.computedAt).toLocaleString()}</div>
         )}
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <a className="text-blue-600 hover:underline text-sm" href="/api/daily">View JSON</a>
+          {today?.date && (
+            <a className="text-blue-600 hover:underline text-sm" href={`/api/pdf?day=${today.date}`}>
+              Download PDF
+            </a>
+          )}
+        </div>
       </section>
 
       <section className="card p-4 sm:p-6 lg:p-8">
@@ -79,7 +87,27 @@ export default function LiveDashboard({
           <HistoryLine labels={labels} values={values} stds={stds} />
         </div>
       </section>
+
+      {today?.medianReport && (
+        <section className="card p-6 space-y-3">
+          <h2 className="text-xl font-semibold">Median Report</h2>
+          <p className="leading-7 whitespace-pre-wrap">{today.medianReport}</p>
+          {today.medianCitations?.length ? (
+            <div className="pt-2">
+              <div className="muted text-sm pb-1">Citations</div>
+              <ul className="list-disc pl-6 space-y-1">
+                {today.medianCitations.map((c, i) => (
+                  <li key={i}>
+                    <a className="text-blue-600 hover:underline" href={c.url} target="_blank" rel="noreferrer">
+                      {c.title || c.url}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      )}
     </div>
   );
 }
-
