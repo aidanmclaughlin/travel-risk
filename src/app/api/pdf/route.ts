@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadDaily } from '@/lib/store';
+import { loadDaily, saveDaily } from '@/lib/store';
 import { deepResearchRisk } from '@/lib/openai';
 
 export const runtime = 'nodejs';
@@ -13,17 +13,8 @@ function toDateStr(d: Date = new Date()): string {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('day') || toDateStr();
-  const compute = searchParams.get('compute') === '1';
-  const secret = process.env.COMPUTE_SECRET;
-  const suppliedSecret = searchParams.get('secret');
-
   let data = await loadDaily(date);
-  if (!data && compute) {
-    const devNoSecret = process.env.NODE_ENV !== 'production' && !secret;
-    const secretOk = !!secret && suppliedSecret === secret;
-    if (!secretOk && !devNoSecret) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized. Provide ?secret=...' }, { status: 401 });
-    }
+  if (!data) {
     const run = await deepResearchRisk();
     data = {
       date,
@@ -38,9 +29,7 @@ export async function GET(req: NextRequest) {
       computedAt: new Date().toISOString(),
       destination: null,
     };
-  }
-  if (!data) {
-    return NextResponse.json({ ok: false, error: 'No data found for this date' }, { status: 404 });
+    await saveDaily(data);
   }
 
   const pdf = generatePdf({

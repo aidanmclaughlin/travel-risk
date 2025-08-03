@@ -38,7 +38,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
         fill: false,
         pointRadius: 0,
         pointHoverRadius: 0,
-        tension: 0.2,
+        tension: 0.35,
       },
       // Upper band (fills to previous to create a band)
       {
@@ -49,14 +49,14 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
           const { chart } = ctx;
           const { ctx: c } = chart;
           const g = c.createLinearGradient(0, 0, 0, 120);
-          g.addColorStop(0, "rgba(17,24,39,0.18)");
+          g.addColorStop(0, "rgba(17,24,39,0.22)");
           g.addColorStop(1, "rgba(17,24,39,0)");
           return g;
         },
         fill: '-1',
         pointRadius: 0,
         pointHoverRadius: 0,
-        tension: 0.2,
+        tension: 0.35,
       },
       // Average line
       {
@@ -64,16 +64,18 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
         data: values,
         borderColor: "#111827",
         backgroundColor: "rgba(0,0,0,0)",
+        borderWidth: 3,
         fill: false,
-        tension: 0.25,
-        pointRadius: 2,
-        pointHoverRadius: 4,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 3,
       },
     ],
   }), [labels, values, stds]);
 
   const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: { callbacks: { label: (ctx: TooltipItem<'line'>) => {
@@ -84,14 +86,17 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       } } },
     },
     scales: {
-      x: { grid: { display: false } },
-      y: { grid: { color: "rgba(0,0,0,0.06)" }, ticks: { callback: (value: number | string) => `${value}%` } },
+      x: { grid: { display: false }, ticks: { color: "rgba(17,24,39,0.6)" } },
+      y: {
+        beginAtZero: true,
+        grid: { color: "rgba(0,0,0,0.06)" },
+        ticks: { color: "rgba(17,24,39,0.6)", callback: (value: number | string) => `${value}%` },
+      },
     },
+    animation: { duration: 700, easing: 'easeOutQuart' },
   }), [values, stds]);
 
   return (
-    <div className="h-[220px]">
-      <Line data={data} options={options} height={200} />
-    </div>
+    <Line data={data} options={options} />
   );
 }

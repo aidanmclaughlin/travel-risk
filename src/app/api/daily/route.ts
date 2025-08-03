@@ -14,30 +14,8 @@ function toDateStr(d: Date = new Date()): string {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('day') || toDateStr();
-  const compute = searchParams.get('compute') === '1';
-  const isCron = req.headers.get('x-vercel-cron') === '1';
-  const secret = process.env.COMPUTE_SECRET;
-  const suppliedSecret = searchParams.get('secret');
-
-  // If a compute is requested, require either Vercel Cron header or a matching secret.
-  if (compute) {
-    const devNoSecret = process.env.NODE_ENV !== 'production' && !secret; // allow local testing without secret
-    const secretOk = !!secret && suppliedSecret === secret;
-    if (!isCron && !secretOk && !devNoSecret) {
-      return NextResponse.json(
-        { ok: false, error: 'Unauthorized. Provide ?secret=... or trigger from Vercel Cron.' },
-        { status: 401 }
-      );
-    }
-  }
-  
-
   const existing = await loadDaily(date);
-  if (!existing && !compute) {
-    return NextResponse.json({ ok: true, data: null, message: 'No data for this date. Pass ?compute=1 to compute.' });
-  }
-
-  if (existing && !compute) {
+  if (existing) {
     return NextResponse.json({ ok: true, data: existing });
   }
 

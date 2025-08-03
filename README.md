@@ -34,16 +34,11 @@ Create a `.env.local` in the project root:
 OPENAI_API_KEY=sk-...
 # Optional: simulate data in development (no API calls)
 SIMULATE_DEEP_RESEARCH=false
-# Note: app is hard‑coded to 25 runs for production fidelity
-# Optional: where to store JSON history (defaults to ./data)
-DATA_DIR=./data
 # Optional: choose model (o3 or o3-deep-research)
 DR_MODEL=o3
-# Recommended: protect compute endpoint so only you (or Vercel Cron) can trigger it
-COMPUTE_SECRET=your-strong-random-token
 ## For persistent storage on Vercel (recommended)
-KV_REST_API_URL=...
-KV_REST_API_TOKEN=...
+# Add Vercel Blob to the project (Storage tab) to auto-provision tokens
+# Local dev falls back to ./data directory if Blob tokens are not present
 ```
 
 4) Run the dev server
@@ -54,37 +49,24 @@ npm run dev
 
 Then open http://localhost:3000.
 
-Manual compute (owner only)
----------------------------
+Manual compute
+--------------
 
-Use your `COMPUTE_SECRET` to trigger a compute on demand:
+No secret required; the API will compute and persist if missing. Examples:
 
-- Browser: `https://your-domain.vercel.app/api/daily?compute=1&secret=YOUR_TOKEN`
-- Local dev: `http://localhost:3000/api/daily?compute=1&secret=YOUR_TOKEN`
-- cURL:
-
-```
-curl "https://your-domain.vercel.app/api/daily?compute=1&secret=YOUR_TOKEN"
-```
-
-Optional parameters:
-
-- `day=YYYY-MM-DD` to compute for a specific date
+- Browser: `https://your-domain.vercel.app/api/daily`
+- Local dev: `http://localhost:3000/api/daily`
+- Optional: `?day=YYYY-MM-DD` to compute/load for a specific date
 
 Production and scheduling
 -------------------------
 
-On Vercel, add `OPENAI_API_KEY` as an Environment Variable. The daily compute endpoint `/api/daily?compute=1` is protected:
-
-- Manual runs (owner only): call `/api/daily?compute=1&secret=YOUR_TOKEN` where `YOUR_TOKEN` matches `COMPUTE_SECRET`.
-- Scheduled runs: Vercel Cron requests include the `x-vercel-cron: 1` header, which is allowed automatically, so you do not need to include the secret in the cron path.
-
-We include a `vercel.json` example cron below. You can customize the schedule/timezone.
+On Vercel, add `OPENAI_API_KEY` as an Environment Variable. To compute the daily value automatically, we include a `vercel.json` cron that calls `/api/daily` once per day. You can customize the schedule/timezone.
 
 ```
 {
   "crons": [
-    { "path": "/api/daily?compute=1", "schedule": "0 9 * * *" }
+    { "path": "/api/daily", "schedule": "0 9 * * *" }
   ]
 }
 ```
@@ -99,11 +81,9 @@ Notes on models
 Persistence notes
 -----------------
 
-- Local dev stores JSON files under `DATA_DIR` (default `./data`).
-- On Vercel, use Vercel KV for persistence across instances and deployments:
-  - Add Vercel KV in your project (Storage tab) and link it to this app.
-  - Ensure `KV_REST_API_URL` and `KV_REST_API_TOKEN` are available in Production (and Preview if needed).
-  - With KV set, the app stores per‑day JSON at keys `daily:YYYY-MM-DD` and maintains an index in `daily:index`.
+- On Vercel, add the Vercel Blob storage integration (first‑party) to persist daily JSON files and PDFs across instances and deploys.
+- The app stores per‑day JSON at `daily/YYYY-MM-DD.json`.
+- In local development without Blob configured, the app falls back to writing JSON files under `./data`.
 
 Development tips
 ----------------
