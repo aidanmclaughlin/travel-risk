@@ -6,11 +6,8 @@ A simple, beautiful Vercel app that publishes daily estimated statistics on how 
 How it works
 ------------
 
-- The backend calls OpenAI's Deep Research Responses API (model: `o3-deep-research`) 25 independent times with strong prompt engineering and web search enabled.
-- Each run returns a probability estimate (0–1) for risk of deportation/visa cancellation/entry denial upon return, plus a short report and citations.
-- We compute:
-  - Average probability across the 25 runs
-  - Median probability and the corresponding “median” report
+- For testing, the backend currently performs a single run with the `o3` model to estimate the probability (0–1) of deportation/visa cancellation/entry denial on re‑entry, and returns a short report with optional citations.
+- In production, you can switch back to `o3-deep-research` and multiple runs (e.g., 25) if desired; see code comments and envs.
 - Results are stored per‑day so the homepage can show today’s risk and a historical chart.
 
 Important: Deep Research calls can take minutes. For production, schedule a daily background call (Vercel Cron) to pre‑compute results. The UI can also trigger a compute on demand.
@@ -40,10 +37,13 @@ SIMULATE_DEEP_RESEARCH=false
 # Note: app is hard‑coded to 25 runs for production fidelity
 # Optional: where to store JSON history (defaults to ./data)
 DATA_DIR=./data
-# Optional: choose model (o3-deep-research or o4-mini-deep-research)
-DR_MODEL=o3-deep-research
+# Optional: choose model (o3 or o3-deep-research)
+DR_MODEL=o3
 # Recommended: protect compute endpoint so only you (or Vercel Cron) can trigger it
 COMPUTE_SECRET=your-strong-random-token
+## For persistent storage on Vercel (recommended)
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
 ```
 
 4) Run the dev server
@@ -57,7 +57,7 @@ Then open http://localhost:3000.
 Manual compute (owner only)
 ---------------------------
 
-Use your `COMPUTE_SECRET` to trigger a 25-run compute on demand:
+Use your `COMPUTE_SECRET` to trigger a compute on demand:
 
 - Browser: `https://your-domain.vercel.app/api/daily?compute=1&secret=YOUR_TOKEN`
 - Local dev: `http://localhost:3000/api/daily?compute=1&secret=YOUR_TOKEN`
@@ -70,7 +70,6 @@ curl "https://your-domain.vercel.app/api/daily?compute=1&secret=YOUR_TOKEN"
 Optional parameters:
 
 - `day=YYYY-MM-DD` to compute for a specific date
-- `count=5` to temporarily reduce the number of runs for testing (max 25)
 
 Production and scheduling
 -------------------------
@@ -90,19 +89,21 @@ We include a `vercel.json` example cron below. You can customize the schedule/ti
 }
 ```
 
-Notes on Deep Research
-----------------------
+Notes on models
+---------------
 
-- We use the Responses API with tools: `web_search_preview` and `code_interpreter` enabled.
-- We request a strictly JSON primary output to make parsing robust; we still defensively extract a probability if needed.
-- For long‑running background tasks, consider using `background: true` and webhooks. This sample keeps it simple and runs sequentially with a high timeout.
+- Current testing mode uses `o3` (no tools) for speed and cost.
+- To enable Deep Research, set `DR_MODEL=o3-deep-research` and consider multiple runs; deep research can be slow and expensive.
+- We request a strictly JSON primary output and defensively extract a probability if needed.
 
 Persistence notes
 -----------------
 
-- The default storage saves JSON files under `DATA_DIR` (default `./data`).
-- When deployed to Vercel serverless functions, filesystem writes are ephemeral and may not persist between runs. For durable storage, connect a database or KV store and adapt `src/lib/store.ts`.
-  - For testing on Vercel, set `DATA_DIR=/tmp/travel-risk-data` and expect data to reset on cold starts.
+- Local dev stores JSON files under `DATA_DIR` (default `./data`).
+- On Vercel, use Vercel KV for persistence across instances and deployments:
+  - Add Vercel KV in your project (Storage tab) and link it to this app.
+  - Ensure `KV_REST_API_URL` and `KV_REST_API_TOKEN` are available in Production (and Preview if needed).
+  - With KV set, the app stores per‑day JSON at keys `daily:YYYY-MM-DD` and maintains an index in `daily:index`.
 
 Development tips
 ----------------
