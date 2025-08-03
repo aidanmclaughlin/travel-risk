@@ -19,8 +19,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, data: existing });
   }
 
-  // Single run to de-risk cost/latency
-  const runCount = 1;
+  // Default to 25 runs; allow ?count=n (1..25) for testing
+  const requestedCount = Number(searchParams.get('count') || '');
+  const runCount = Number.isFinite(requestedCount) ? Math.max(1, Math.min(25, Math.floor(requestedCount))) : 25;
   const estimates: number[] = [];
   const reports: string[] = [];
   const citationsList: { url: string; title?: string }[][] = [];

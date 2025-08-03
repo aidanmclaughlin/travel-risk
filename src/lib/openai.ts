@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { SingleEstimate } from './types';
 
 const SIMULATE = (process.env.SIMULATE_DEEP_RESEARCH ?? '').toLowerCase() === 'true' || !process.env.OPENAI_API_KEY;
-const MODEL = process.env.DR_MODEL || 'o3';
+const MODEL = process.env.DR_MODEL || 'o3-deep-research';
 
 const OutputSchema = z.object({
   probability: z.number().min(0).max(1),
@@ -30,6 +30,10 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   const resp = await client.responses.create({
     model: MODEL,
     input,
+    tools: [
+      { type: 'web_search_preview' },
+      { type: 'code_interpreter', container: { type: 'auto' } },
+    ],
     max_output_tokens: 2000,
   });
 
