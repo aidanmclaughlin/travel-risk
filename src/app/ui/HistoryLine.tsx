@@ -14,7 +14,7 @@ import {
   type TooltipItem,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 ChartJS.register(
   CategoryScale,
@@ -26,6 +26,15 @@ ChartJS.register(
 );
 
 export default function HistoryLine({ labels, values, stds }: { labels: string[]; values: number[]; stds: number[] }) {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const apply = () => setDark(!!mq?.matches);
+    apply();
+    mq?.addEventListener?.('change', apply);
+    return () => mq?.removeEventListener?.('change', apply);
+  }, []);
+
   const colorFor = (v: number) => {
     // v is percentage 0..100; map 0->green, 100->red using HSL
     const clamped = Math.max(0, Math.min(100, v));
@@ -114,15 +123,15 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       } } },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: "rgba(17,24,39,0.6)" } },
+      x: { grid: { display: false }, ticks: { color: dark ? '#e5e7eb' : '#1f2937' } },
       y: {
         beginAtZero: true,
-        grid: { color: "rgba(0,0,0,0.06)" },
-        ticks: { color: "rgba(17,24,39,0.6)", callback: (value: number | string) => `${value}%` },
+        grid: { color: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' },
+        ticks: { color: dark ? '#e5e7eb' : '#1f2937', callback: (value: number | string) => `${value}%` },
       },
     },
     animation: { duration: 700, easing: 'easeOutQuart' },
-  }), [values, stds]);
+  }), [values, stds, dark]);
 
   return (
     <Line data={data} options={options} />
