@@ -4,9 +4,6 @@ import { SingleEstimate } from './types';
 
 const SIMULATE = (process.env.SIMULATE_DEEP_RESEARCH ?? '').toLowerCase() === 'true' || !process.env.OPENAI_API_KEY;
 const MODEL = process.env.DR_MODEL || 'o3-deep-research';
-const MAX_TOOL_CALLS = Number.isFinite(Number(process.env.DR_MAX_TOOL_CALLS))
-  ? Math.max(1, Number(process.env.DR_MAX_TOOL_CALLS))
-  : undefined;
 
 const OutputSchema = z.object({
   probability: z.number().min(0).max(1),
@@ -14,12 +11,12 @@ const OutputSchema = z.object({
   citations: z.array(z.object({ url: z.string().url().or(z.string()), title: z.string().optional() })).optional().default([]),
 });
 
-export async function deepResearchRisk(destination?: string | null): Promise<SingleEstimate> {
+export async function deepResearchRisk(): Promise<SingleEstimate> {
   if (SIMULATE) {
     const p = clamp01(0.12 + randn_bm() * 0.05); // around 12% with some variance
     return {
       probability: p,
-      report: `Simulated analysis: Estimated probability ${Math.round(p * 100)}% for a U.S. non-citizen traveler to face visa/entry denial issues on return${destination ? ` from ${destination}` : ''}. This is placeholder data; set SIMULATE_DEEP_RESEARCH=false with a valid OPENAI_API_KEY to run live.`,
+      report: `Simulated analysis: Estimated probability ${Math.round(p * 100)}% for a U.S. non-citizen traveler to face visa/entry denial issues on re-entry. This is placeholder data; set SIMULATE_DEEP_RESEARCH=false with a valid OPENAI_API_KEY to run live.`,
       citations: [
         { url: 'https://www.dhs.gov/', title: 'DHS' },
         { url: 'https://travel.state.gov/', title: 'U.S. State Department' },
@@ -28,7 +25,7 @@ export async function deepResearchRisk(destination?: string | null): Promise<Sin
   }
 
   const client = new OpenAI({ timeout: 3600 * 1000 });
-  const input = buildPrompt(destination ?? undefined);
+  const input = buildPrompt();
 
   const resp = await client.responses.create({
     model: MODEL,
@@ -38,7 +35,6 @@ export async function deepResearchRisk(destination?: string | null): Promise<Sin
       { type: 'code_interpreter', container: { type: 'auto' } },
     ],
     max_output_tokens: 2000,
-    ...(MAX_TOOL_CALLS ? { max_tool_calls: MAX_TOOL_CALLS } as any : {}),
   });
 
   // Try to parse a JSON block first
@@ -60,13 +56,12 @@ export async function deepResearchRisk(destination?: string | null): Promise<Sin
   };
 }
 
-function buildPrompt(destination?: string) {
+function buildPrompt() {
   return `You are a careful, conservative research analyst estimating a probability for a specific risk.
 
 Task: Estimate the probability that a U.S. non-citizen traveler who departs the U.S. today and attempts to re-enter within the next 30 days will experience a visa-related adverse outcome at the U.S. border (e.g., visa revocation, entry denial, detention, or deportation).
 
-Origin: United States.
-If a destination is specified, estimate risk conditional on travel from the U.S. to that destination. Otherwise, estimate an all-destinations aggregate risk (U.S. to any country), weighted toward common destinations and current global policy signals.
+Origin: United States. Estimate an all-destinations aggregate risk (U.S. to any country), weighted toward common destinations and current U.S. policy signals.
 
 Do:
 - Use only up-to-date, reputable sources. Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), major airlines/airport advisories, and reputable press.
@@ -82,7 +77,6 @@ Return JSON ONLY with the following shape and no extra keys:
   "citations": [ { "url": "<source url>", "title": "<optional>" }, ... ]
 }
 
-Destination: ${destination ?? 'ANY/AGGREGATE'}
 Date (UTC): ${new Date().toISOString().slice(0, 10)}
 `;
 }

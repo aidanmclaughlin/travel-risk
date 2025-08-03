@@ -42,8 +42,6 @@ SIMULATE_DEEP_RESEARCH=false
 DATA_DIR=./data
 # Optional: choose model (o3-deep-research or o4-mini-deep-research)
 DR_MODEL=o3-deep-research
-# Optional: cap tool calls to control cost/latency (docs: max_tool_calls)
-DR_MAX_TOOL_CALLS=60
 # Recommended: protect compute endpoint so only you (or Vercel Cron) can trigger it
 COMPUTE_SECRET=your-strong-random-token
 ```
@@ -69,10 +67,9 @@ Use your `COMPUTE_SECRET` to trigger a 25-run compute on demand:
 curl "https://your-domain.vercel.app/api/daily?compute=1&secret=YOUR_TOKEN"
 ```
 
-Optional parameters:
+Optional parameter:
 
 - `day=YYYY-MM-DD` to compute for a specific date
-- `destination=Canada` to compute for a destination-specific estimate
 
 Production and scheduling
 -------------------------
@@ -97,7 +94,6 @@ Notes on Deep Research
 
 - We use the Responses API with tools: `web_search_preview` and `code_interpreter` enabled.
 - We request a strictly JSON primary output to make parsing robust; we still defensively extract a probability if needed.
-- To control cost/latency you can set `DR_MAX_TOOL_CALLS` to cap browsing/tool usage per run.
 - For long‑running background tasks, consider using `background: true` and webhooks. This sample keeps it simple and runs sequentially with a high timeout.
 
 Persistence notes
