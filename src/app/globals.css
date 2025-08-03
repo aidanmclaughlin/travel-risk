@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Subtle gradient background */
+body {
+  background:
+    radial-gradient(1100px 700px at 80% -10%, rgba(147,197,253,0.45) 0%, rgba(147,197,253,0) 60%),
+    radial-gradient(1100px 700px at -20% 10%, rgba(216,180,254,0.45) 0%, rgba(216,180,254,0) 60%),
+    var(--background);
+}
+
+.card {
+  border-radius: 1rem;
+  background: color-mix(in oklab, white 78%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.muted { color: #6b7280; }
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Daily Travel Risk — U.S. to Any Country
+=======================================
 
-## Getting Started
+A simple, beautiful Vercel app that publishes daily estimated statistics on how risky it is for U.S. non‑citizens to travel to other countries and re‑enter the U.S., given current visa/travel‑policy conditions.
 
-First, run the development server:
+How it works
+------------
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- The backend calls OpenAI's Deep Research Responses API (model: `o3-deep-research`) 25 independent times with strong prompt engineering and web search enabled.
+- Each run returns a probability estimate (0–1) for risk of deportation/visa cancellation/entry denial upon return, plus a short report and citations.
+- We compute:
+  - Average probability across the 25 runs
+  - Median probability and the corresponding “median” report
+- Results are stored per‑day so the homepage can show today’s risk and a historical chart.
+
+Important: Deep Research calls can take minutes. For production, schedule a daily background call (Vercel Cron) to pre‑compute results. The UI can also trigger a compute on demand.
+
+Getting started
+---------------
+
+1) Prerequisites
+
+- Node.js 18+ (Node 20+ recommended)
+- An OpenAI API key with access to Deep Research models
+
+2) Install dependencies
+
+```
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3) Configure environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` in the project root:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+OPENAI_API_KEY=sk-...
+# Optional: simulate data in development (no API calls)
+SIMULATE_DEEP_RESEARCH=false
+# Note: app is hard‑coded to 25 runs for production fidelity
+# Optional: where to store JSON history (defaults to ./data)
+DATA_DIR=./data
+```
 
-## Learn More
+4) Run the dev server
 
-To learn more about Next.js, take a look at the following resources:
+```
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Then open http://localhost:3000.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+UI tips
+-------
 
-## Deploy on Vercel
+- On the homepage, under Actions, you can:
+  - Compute today’s estimate (general, all destinations)
+  - Compute for a specific destination by entering a country/region and clicking Compute (this writes/updates today’s JSON for that destination)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Production and scheduling
+-------------------------
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+On Vercel, add `OPENAI_API_KEY` as an Environment Variable. To compute the daily value automatically, add a Vercel Cron job pointing to `/api/daily?compute=1` once per day.
+
+We include a `vercel.json` example cron below. You can customize the schedule/timezone.
+
+```
+{
+  "crons": [
+    { "path": "/api/daily?compute=1", "schedule": "0 9 * * *" }
+  ]
+}
+```
+
+Notes on Deep Research
+----------------------
+
+- We use the Responses API with tools: `web_search_preview` and `code_interpreter` enabled.
+- We request a strictly JSON primary output to make parsing robust; we still defensively extract a probability if needed.
+- For long‑running background tasks, consider using `background: true` and webhooks. This sample keeps it simple and runs sequentially with a high timeout.
+
+Persistence notes
+-----------------
+
+- The default storage saves JSON files under `DATA_DIR` (default `./data`).
+- When deployed to Vercel serverless functions, filesystem writes are ephemeral and may not persist between runs. For durable storage, connect a database or KV store and adapt `src/lib/store.ts`.
+  - For testing on Vercel, set `DATA_DIR=/tmp/travel-risk-data` and expect data to reset on cold starts.
+
+Development tips
+----------------
+
+- Start with `SIMULATE_DEEP_RESEARCH=true` to iterate on the UI quickly.
+- Costs/latency: Deep Research is expensive and slow (tens of minutes for 25 runs). Schedule it with a cron and avoid computing on user requests.
+
+PDF export
+----------
+
+- Download a per‑day PDF (title, summary stats, median report, citations):
+  - /api/pdf?day=YYYY-MM-DD (defaults to today)
+  - The homepage provides a “Download full PDF (median report)” button when a day’s estimate exists.
