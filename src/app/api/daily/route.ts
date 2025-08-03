@@ -15,6 +15,22 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('day') || toDateStr();
   const compute = searchParams.get('compute') === '1';
+  const destinationParam = searchParams.get('destination');
+  const isCron = req.headers.get('x-vercel-cron') === '1';
+  const secret = process.env.COMPUTE_SECRET;
+  const suppliedSecret = searchParams.get('secret');
+
+  // If a compute is requested, require either Vercel Cron header or a matching secret.
+  if (compute) {
+    const devNoSecret = process.env.NODE_ENV !== 'production' && !secret; // allow local testing without secret
+    const secretOk = !!secret && suppliedSecret === secret;
+    if (!isCron && !secretOk && !devNoSecret) {
+      return NextResponse.json(
+        { ok: false, error: 'Unauthorized. Provide ?secret=... or trigger from Vercel Cron.' },
+        { status: 401 }
+      );
+    }
+  }
   
 
   const existing = await loadDaily(date);
@@ -33,7 +49,7 @@ export async function GET(req: NextRequest) {
   const citationsList: { url: string; title?: string }[][] = [];
 
   for (let i = 0; i < runCount; i++) {
-    const r = await deepResearchRisk(undefined);
+    const r = await deepResearchRisk(destinationParam ?? undefined);
     estimates.push(r.probability);
     reports.push(r.report);
     citationsList.push(r.citations);
@@ -59,7 +75,7 @@ export async function GET(req: NextRequest) {
 
   const result: DailyResult = {
     date,
-    model: 'o3-deep-research',
+    model: process.env.DR_MODEL || 'o3-deep-research',
     runCount,
     average: avg,
     median,
@@ -68,7 +84,7 @@ export async function GET(req: NextRequest) {
     medianReport: reports[minIdx],
     medianCitations: citationsList[minIdx] || [],
     computedAt: new Date().toISOString(),
-    destination: null,
+    destination: destinationParam || null,
   };
 
   await saveDaily(result);

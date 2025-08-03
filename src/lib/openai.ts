@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { SingleEstimate } from './types';
 
 const SIMULATE = (process.env.SIMULATE_DEEP_RESEARCH ?? '').toLowerCase() === 'true' || !process.env.OPENAI_API_KEY;
+const MODEL = process.env.DR_MODEL || 'o3-deep-research';
+const MAX_TOOL_CALLS = Number.isFinite(Number(process.env.DR_MAX_TOOL_CALLS))
+  ? Math.max(1, Number(process.env.DR_MAX_TOOL_CALLS))
+  : undefined;
 
 const OutputSchema = z.object({
   probability: z.number().min(0).max(1),
@@ -27,13 +31,14 @@ export async function deepResearchRisk(destination?: string | null): Promise<Sin
   const input = buildPrompt(destination ?? undefined);
 
   const resp = await client.responses.create({
-    model: 'o3-deep-research',
+    model: MODEL,
     input,
     tools: [
       { type: 'web_search_preview' },
       { type: 'code_interpreter', container: { type: 'auto' } },
     ],
     max_output_tokens: 2000,
+    ...(MAX_TOOL_CALLS ? { max_tool_calls: MAX_TOOL_CALLS } as any : {}),
   });
 
   // Try to parse a JSON block first
