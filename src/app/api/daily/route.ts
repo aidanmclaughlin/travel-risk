@@ -15,24 +15,24 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('day') || toDateStr();
   const existing = await loadDaily(date);
-  if (existing) {
-    return NextResponse.json({ ok: true, data: existing });
-  }
-
-  // Default to 25 runs; allow ?count=n (1..25) for testing
+  // Always aim for at least 25 runs
   const requestedCount = Number(searchParams.get('count') || '');
-  const runCount = Number.isFinite(requestedCount) ? Math.max(1, Math.min(25, Math.floor(requestedCount))) : 25;
-  const estimates: number[] = [];
-  const reports: string[] = [];
-  const citationsList: { url: string; title?: string }[][] = [];
+  let desired = Number.isFinite(requestedCount) ? Math.max(1, Math.min(25, Math.floor(requestedCount))) : 25;
+  if (desired < 25) desired = 25;
 
-  for (let i = 0; i < runCount; i++) {
-    const r = await deepResearchRisk();
-    estimates.push(r.probability);
-    reports.push(r.report);
-    citationsList.push(r.citations);
+  if (existing && existing.runCount >= desired) {
+    // Return redacted model to avoid leaking unreleased model names
+    return NextResponse.json({ ok: true, data: { ...existing, model: 'private' } });
   }
 
+  // Either compute fresh or top-up missing runs in parallel
+  const baseEstimates = existing?.estimates ?? [];
+  const missing = desired - (existing?.runCount ?? 0);
+
+  const newRuns = await Promise.all(Array.from({ length: missing }, () => deepResearchRisk()));
+  const estimates = [...baseEstimates, ...newRuns.map((r) => r.probability)];
+
+  const runCount = estimates.length;
   const avg = estimates.reduce((a, b) => a + b, 0) / runCount;
   const sorted = [...estimates].sort((a, b) => a - b);
   const median = runCount % 2 === 1 ? sorted[(runCount - 1) / 2] : (sorted[runCount / 2 - 1] + sorted[runCount / 2]) / 2;
@@ -40,10 +40,10 @@ export async function GET(req: NextRequest) {
     estimates.reduce((acc, v) => acc + Math.pow(v - avg, 2), 0) / runCount
   );
 
-  // Pick the report that is closest to the median
-  let minIdx = 0;
+  // Choose a report nearest to the median from only the new runs if none existed, otherwise prefer the closest overall
+  let minIdx = -1;
   let minDelta = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < estimates.length; i++) {
+  for (let i = 0; i < runCount; i++) {
     const d = Math.abs(estimates[i] - median);
     if (d < minDelta) {
       minDelta = d;
@@ -51,16 +51,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Build citations aligned to indices; if an index came from existing but we don't have per-run reports stored, fall back to today's closest from new runs
+  const newReportsOnly = newRuns.map(r => r.report);
+  const newCitationsOnly = newRuns.map(r => r.citations);
+  const reportForMedian = minIdx >= (existing?.runCount ?? 0) ? newReportsOnly[minIdx - (existing?.runCount ?? 0)] : (newReportsOnly[0] || existing?.medianReport || '');
+  const citationsForMedian = minIdx >= (existing?.runCount ?? 0) ? newCitationsOnly[minIdx - (existing?.runCount ?? 0)] : (newCitationsOnly[0] || existing?.medianCitations || []);
+
   const result: DailyResult = {
     date,
-    model: process.env.DR_MODEL || 'o3',
+    model: 'private',
     runCount,
     average: avg,
     median,
     stddev,
     estimates,
-    medianReport: reports[minIdx],
-    medianCitations: citationsList[minIdx] || [],
+    medianReport: reportForMedian,
+    medianCitations: citationsForMedian,
     computedAt: new Date().toISOString(),
     destination: null,
   };

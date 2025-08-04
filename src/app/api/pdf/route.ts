@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     medianPct: Math.round(data.median * 1000) / 10,
     stddevPct: Math.round(data.stddev * 1000) / 10,
     runs: data.runCount,
-    model: data.model,
+    model: 'private',
     report: data.medianReport,
     citations: data.medianCitations?.map((c) => `${c.title ? c.title + ' — ' : ''}${c.url}`) || [],
   });

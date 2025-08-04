@@ -130,6 +130,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
   const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { left: 24, right: 24 } },
     plugins: {
       legend: { display: false },
       tooltip: { callbacks: { label: (ctx: TooltipItem<'line'>) => {
@@ -140,7 +141,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       } } },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
+      x: { grid: { display: false }, ticks: { display: false }, border: { display: false }, offset: true },
       y: {
         beginAtZero: true,
         grid: { display: false },

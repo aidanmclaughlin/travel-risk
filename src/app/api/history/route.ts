@@ -5,6 +5,7 @@ export const runtime = 'nodejs';
 
 export async function GET() {
   const history = await listHistory();
-  return NextResponse.json({ ok: true, data: history });
+  // Redact model to avoid exposing unreleased model names
+  const redacted = history.map((h) => ({ ...h, model: 'private' }));
+  return NextResponse.json({ ok: true, data: redacted });
 }
-
