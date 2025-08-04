@@ -71,14 +71,15 @@ Origin: United States. Estimate an all-destinations aggregate risk (U.S. to any 
 
 Context to incorporate explicitly:
 - Date (UTC): ${today}
-- Current U.S. administration: Trump administration. Consider the current enforcement posture and public statements from CBP and DHS regarding re-entry screening and consequences for prior criminal convictions.
-- Political re-entry concerns: In recent months, multiple news reports described lawful permanent residents (green card holders) and visa holders facing heightened scrutiny at U.S. ports of entry, including temporary denials of re-entry tied to old misdemeanor convictions and pending immigration proceedings. Treat such reports as signals, but ground conclusions in official sources.
-- CBP has publicly emphasized that lawful permanent residents with prior convictions may face detention and removal proceedings at ports of entry. Reflect how this posture affects baseline risk for a typical non-citizen traveler.
+- Current U.S. administration: Second Trump administration. Consider current enforcement posture and public statements from CBP and DHS regarding re-entry screening and consequences for prior criminal convictions.
+- Political re-entry concerns: Reports indicate that even law‑abiding non‑citizens with no criminal record have faced intensified scrutiny or adverse outcomes at ports of entry under the current administration. Civil‑liberties groups and press accounts allege discriminatory enforcement (including racism, anti‑LGBTQ+ bias, and viewpoint‑based targeting), though official policy may deny such intent.
+- Specific reported patterns to evaluate and, where possible, cite: (a) transgender travelers facing issues due to name/ID mismatches; (b) international students and scholars questioned or turned away due to perceived political activity (e.g., anti‑Israel positions); (c) lawful permanent residents with historic minor offenses facing detention or removal proceedings. Treat these as claims to validate against official policy, case law, and reputable reporting; note evidentiary limits when applicable.
+- CBP has emphasized that lawful permanent residents with prior convictions may face detention and removal proceedings at ports of entry. Reflect how this posture, combined with the reported patterns above, affects baseline risk for a typical non‑citizen traveler.
 
 Do:
 - Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), airline/airport advisories, and reputable press when citing. Where possible, cite primary sources.
 - Consider traveler variability (visa categories, countries of origin, prior criminal history), and recent policy changes. When aggregating to a single number, be conservative.
-- Return a single probability in [0,1] for the base rate under current conditions.
+- Return a single probability in [0,1] for the base rate under current conditions. If the evidence indicates a materially elevated risk under the current administration, reflect that in the estimate.
 - Also write an extensive, well-structured Markdown report (300–700 words) with headings, bullets, and clear, readable sections suitable for direct rendering.
 
 At the end of your response, include a JSON object with the following shape and no extra keys:
