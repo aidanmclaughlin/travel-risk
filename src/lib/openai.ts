@@ -78,6 +78,7 @@ Context to incorporate explicitly:
 
 Do:
 - Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), airline/airport advisories, and reputable press when citing. Where possible, cite primary sources.
+- If you have tool access, perform a brief web search to capture the most recent developments about the second Trump administration's border/re-entry enforcement posture and current incidents (e.g., the past 30–90 days). Incorporate relevant findings and cite them.
 - Consider traveler variability (visa categories, countries of origin, prior criminal history), and recent policy changes. When aggregating to a single number, be conservative.
 - Return a single probability in [0,1] for the base rate under current conditions. If the evidence indicates a materially elevated risk under the current administration, reflect that in the estimate.
 - Also write an extensive, well-structured Markdown report (300–700 words) with headings, bullets, and clear, readable sections suitable for direct rendering.
