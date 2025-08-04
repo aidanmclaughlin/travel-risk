@@ -87,20 +87,39 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
 function collectOutputText(resp: unknown): string {
   type U = Record<string, unknown>;
   const r = resp as U;
+  // 1) Prefer Responses API aggregated output_text if present
+  const agg = (r as U).output_text;
+  if (typeof agg === 'string' && agg.trim()) return agg;
+
+  // 2) Walk the Responses API output[] tree and gather text parts
   const out = r.output as unknown[] | undefined;
-  if (!out) return '';
   let buf = '';
-  for (const item of out) {
-    const it = item as U;
-    if (it.type !== 'message') continue;
-    const content = it.content as unknown[] | undefined;
-    if (!content) continue;
-    for (const part of content) {
-      const p = part as U;
-      if (p.type === 'output_text' && typeof p.text === 'string') buf += p.text;
+  if (Array.isArray(out)) {
+    for (const item of out) {
+      const it = item as U;
+      if (it.type !== 'message') continue;
+      const content = it.content as unknown[] | undefined;
+      if (!Array.isArray(content)) continue;
+      for (const part of content) {
+        const p = part as U;
+        // Some SDK versions use { type: 'output_text', text }, others { type: 'text', text }
+        const t = typeof p.text === 'string' ? p.text : '';
+        if ((p.type === 'output_text' || p.type === 'text') && t) buf += t;
+      }
     }
+    if (buf.trim()) return buf;
   }
-  return buf;
+
+  // 3) Fallback for legacy Chat Completions shape: choices[].message.content
+  const choices = (r as U).choices as unknown[] | undefined;
+  if (Array.isArray(choices) && choices.length) {
+    const first = choices[0] as U;
+    const msg = first.message as U | undefined;
+    const content = msg?.content as unknown;
+    if (typeof content === 'string') return content;
+  }
+
+  return '';
 }
 
 function buildPrompt() {
