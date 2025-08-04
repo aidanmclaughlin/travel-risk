@@ -43,7 +43,21 @@ function mdToHtml(md: string): string {
     if (olistOpen) { out.push('</ol>'); olistOpen = false; }
   };
 
-  for (const raw of lines) {
+  function splitPipeRow(row: string): string[] {
+    let t = row.trim();
+    if (t.startsWith('|')) t = t.slice(1);
+    if (t.endsWith('|')) t = t.slice(0, -1);
+    return t.split('|').map((c) => c.trim());
+  }
+
+  function isTableSeparator(row: string): boolean {
+    const cells = splitPipeRow(row).map((c) => c.replace(/\s+/g, ''));
+    if (cells.length < 1) return false;
+    return cells.every((c) => /^:?-{3,}:?$/.test(c));
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trimEnd();
     if (!line.trim()) { flushList(); out.push(''); continue; }
     if (/^######\s+/.test(line)) { flushList(); out.push(`<h6>${inline(escapeHtml(line.replace(/^######\s+/, '')))}</h6>`); continue; }
@@ -71,6 +85,39 @@ function mdToHtml(md: string): string {
     if (/^(-{3,}|\*{3,})$/.test(line.trim())) {
       flushList();
       out.push('<hr />');
+      continue;
+    }
+
+    // tables: header | header | ... then separator line of --- | :---: etc.
+    if (line.includes('|') && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+      flushList();
+      const headerCells = splitPipeRow(line);
+      const sepCells = splitPipeRow(lines[i + 1]);
+      const aligns = sepCells.map((c) => {
+        const t = c.trim();
+        const starts = /^\s*:/.test(t);
+        const ends = /:\s*$/.test(t);
+        return starts && ends ? 'center' : starts ? 'left' : ends ? 'right' : undefined;
+      });
+      i += 2; // move past header + separator
+      const rows: string[][] = [];
+      while (i < lines.length) {
+        const r = lines[i].trimEnd();
+        if (!r.trim()) break;
+        if (!r.includes('|')) break;
+        rows.push(splitPipeRow(r));
+        i++;
+      }
+      i--; // step back one since for-loop will increment
+      const ths = headerCells.map((h, idx) => `<th${aligns[idx] ? ` style=\"text-align:${aligns[idx]}\"` : ''}>${inline(escapeHtml(h))}</th>`).join('');
+      const body = rows
+        .map((cells) => {
+          return `<tr>${cells
+            .map((c, idx) => `<td${aligns[idx] ? ` style=\"text-align:${aligns[idx]}\"` : ''}>${inline(escapeHtml(c))}</td>`)
+            .join('')}</tr>`;
+        })
+        .join('');
+      out.push(`<table><thead><tr>${ths}</tr></thead><tbody>${body}</tbody></table>`);
       continue;
     }
 

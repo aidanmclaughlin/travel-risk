@@ -108,3 +108,6 @@ article.prose a:hover { text-decoration: underline; }
 article.prose code { background: color-mix(in oklab, var(--foreground) 8%, transparent); padding: 0.15em 0.35em; border-radius: 0.35rem; font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.95em; }
 article.prose pre { background: color-mix(in oklab, var(--foreground) 8%, transparent); padding: 0.9rem 1rem; border-radius: 0.6rem; overflow: auto; }
 article.prose hr { border: none; border-top: 1px solid color-mix(in oklab, var(--foreground) 12%, transparent); margin: 1.5rem 0; }
+article.prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+article.prose th, article.prose td { border: 1px solid color-mix(in oklab, var(--foreground) 12%, transparent); padding: 0.5rem 0.6rem; }
+article.prose thead th { background: color-mix(in oklab, var(--foreground) 6%, transparent); }
