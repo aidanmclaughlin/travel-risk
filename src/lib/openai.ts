@@ -112,13 +112,31 @@ function collectOutputText(resp: unknown): string {
     // First pass: strict message/content with known part types
     for (const item of out) {
       const it = item as U;
-      if (it.type !== 'message') continue;
-      const content = it.content as unknown[] | undefined;
-      if (!Array.isArray(content)) continue;
-      for (const part of content) {
-        const p = part as U;
-        const t = typeof p.text === 'string' ? p.text : '';
-        if ((p.type === 'output_text' || p.type === 'text') && t) buf += t;
+      if (it.type === 'message') {
+        const content = it.content as unknown[] | undefined;
+        if (!Array.isArray(content)) continue;
+        for (const part of content) {
+          const p = part as U;
+          const t = typeof p.text === 'string' ? p.text : '';
+          if ((p.type === 'output_text' || p.type === 'text') && t) buf += t;
+        }
+      } else if (it.type === 'reasoning') {
+        // Some reasoning models emit only a reasoning item with a 'summary'
+        const summary = (it as U).summary as unknown;
+        if (typeof summary === 'string') buf += summary;
+        else if (summary && typeof summary === 'object') {
+          const sObj = summary as U;
+          if (typeof sObj.text === 'string') buf += sObj.text;
+          const sContent = sObj.content as unknown;
+          if (typeof sContent === 'string') buf += sContent;
+          else if (Array.isArray(sContent)) {
+            for (const part of sContent) {
+              const p = part as U;
+              const t = typeof p.text === 'string' ? p.text : '';
+              if ((p.type === 'output_text' || p.type === 'text') && t) buf += t;
+            }
+          }
+        }
       }
     }
     if (buf.trim()) return buf;
@@ -145,6 +163,19 @@ function collectOutputText(resp: unknown): string {
         } else if (tprop === 'message') {
           if (Array.isArray(content)) walk(content);
           else if (typeof content === 'string') buf += content;
+        } else if (tprop === 'reasoning') {
+          const summary = o.summary as unknown;
+          if (typeof summary === 'string') buf += summary;
+          else if (summary && typeof summary === 'object') {
+            const s = summary as U;
+            if (typeof s.text === 'string') buf += s.text;
+            const sc = s.content as unknown;
+            if (typeof sc === 'string') buf += sc;
+            else if (Array.isArray(sc)) walk(sc);
+          }
+          // Also examine content
+          if (Array.isArray(content)) walk(content);
+          else if (typeof content === 'string') buf += content;
         } else {
           // Generic fallbacks inside output items only
           if (typeof text === 'string' && text) buf += text;
@@ -154,7 +185,7 @@ function collectOutputText(resp: unknown): string {
           for (const k of Object.keys(o)) {
             const val = (o as U)[k];
             if (k === 'text' && typeof val === 'string') buf += val;
-            else if (k === 'content') walk(val);
+            else if (k === 'content' || k === 'summary') walk(val);
           }
         }
       }
