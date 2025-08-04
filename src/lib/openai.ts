@@ -62,17 +62,24 @@ function extractOutputTextStrict(resp: unknown): string {
 // (no extra debug helpers)
 
 function buildPrompt() {
+  const today = new Date().toISOString().slice(0, 10);
   return `You are a careful, conservative research analyst estimating a probability for a specific risk.
 
 Task: Estimate the probability that a U.S. non-citizen traveler who departs the U.S. today and attempts to re-enter within the next 30 days will experience a visa-related adverse outcome at the U.S. border (e.g., visa revocation, entry denial, detention, or deportation).
 
 Origin: United States. Estimate an all-destinations aggregate risk (U.S. to any country), weighted toward common destinations and current U.S. policy signals.
 
+Context to incorporate explicitly:
+- Date (UTC): ${today}
+- Current U.S. administration: Trump administration. Consider the current enforcement posture and public statements from CBP and DHS regarding re-entry screening and consequences for prior criminal convictions.
+- Political re-entry concerns: In recent months, multiple news reports described lawful permanent residents (green card holders) and visa holders facing heightened scrutiny at U.S. ports of entry, including temporary denials of re-entry tied to old misdemeanor convictions and pending immigration proceedings. Treat such reports as signals, but ground conclusions in official sources.
+- CBP has publicly emphasized that lawful permanent residents with prior convictions may face detention and removal proceedings at ports of entry. Reflect how this posture affects baseline risk for a typical non-citizen traveler.
+
 Do:
-- Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), airline/airport advisories, and reputable press when citing.
-- Consider traveler variability: visa categories, countries of origin, and recent policy changes. When aggregating, be conservative.
-- Return a single probability in [0,1]. The probability should reflect the base rate for a typical non-citizen traveler under current conditions.
-- Also write an extensive, well-structured Markdown report (300–700 words) with headings, bullet points, and clear, readable sections, suitable for direct rendering.
+- Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), airline/airport advisories, and reputable press when citing. Where possible, cite primary sources.
+- Consider traveler variability (visa categories, countries of origin, prior criminal history), and recent policy changes. When aggregating to a single number, be conservative.
+- Return a single probability in [0,1] for the base rate under current conditions.
+- Also write an extensive, well-structured Markdown report (300–700 words) with headings, bullets, and clear, readable sections suitable for direct rendering.
 
 At the end of your response, include a JSON object with the following shape and no extra keys:
 {
@@ -80,8 +87,6 @@ At the end of your response, include a JSON object with the following shape and 
   "report": "<extensive Markdown report>",
   "citations": [ { "url": "<source url>", "title": "<optional>" }, ... ]
 }
-
-Date (UTC): ${new Date().toISOString().slice(0, 10)}
 `;
 }
 
