@@ -36,8 +36,12 @@ function mdToHtml(md: string): string {
   const lines = md.split(/\r?\n/);
   const out: string[] = [];
   let listOpen = false;
+  let olistOpen = false;
 
-  const flushList = () => { if (listOpen) { out.push('</ul>'); listOpen = false; } };
+  const flushList = () => {
+    if (listOpen) { out.push('</ul>'); listOpen = false; }
+    if (olistOpen) { out.push('</ol>'); olistOpen = false; }
+  };
 
   for (const raw of lines) {
     const line = raw.trimEnd();
@@ -52,6 +56,21 @@ function mdToHtml(md: string): string {
     if (/^[-*]\s+/.test(line)) {
       if (!listOpen) { out.push('<ul>'); listOpen = true; }
       out.push(`<li>${inline(escapeHtml(line.replace(/^[-*]\s+/, '')))}</li>`);
+      continue;
+    }
+    if (/^\d+\.\s+/.test(line)) {
+      if (!olistOpen) { out.push('<ol>'); olistOpen = true; }
+      out.push(`<li>${inline(escapeHtml(line.replace(/^\d+\.\s+/, '')))}</li>`);
+      continue;
+    }
+    if (/^>\s+/.test(line)) {
+      flushList();
+      out.push(`<blockquote><p>${inline(escapeHtml(line.replace(/^>\s+/, '')))}</p></blockquote>`);
+      continue;
+    }
+    if (/^(-{3,}|\*{3,})$/.test(line.trim())) {
+      flushList();
+      out.push('<hr />');
       continue;
     }
 

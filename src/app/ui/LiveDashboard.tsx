@@ -18,7 +18,6 @@ export default function LiveDashboard({
   const [history, setHistory] = useState<DailyResult[]>(initialHistory);
   // background refresh, but no visible indicator
   const [showReport, setShowReport] = useState(false);
-  
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +45,15 @@ export default function LiveDashboard({
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && showReport) setShowReport(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, [showReport]);
+
+  // Allow opening the report by a downward scroll gesture
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      if (!showReport && e.deltaY > 10) setShowReport(true);
+    };
+    window.addEventListener('wheel', onWheel, { passive: true });
+    return () => window.removeEventListener('wheel', onWheel);
   }, [showReport]);
 
   const labels = useMemo(() => history.map((h) => h.date), [history]);
@@ -133,12 +141,12 @@ export default function LiveDashboard({
                   </button>
                 </div>
               </div>
-              <div className="p-5 sm:p-6 overflow-hidden" style={{ maxHeight: 'calc(85vh - 64px)' }}>
+              <div className="p-5 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
                 <Markdown content={today.medianReport} />
-              {today.medianCitations?.length ? (
-                <div className="pt-4">
-                  <div className="muted text-sm pb-1">Citations</div>
-                  <ul className="list-disc pl-6 space-y-1">
+                {today.medianCitations?.length ? (
+                  <div className="pt-4">
+                    <div className="muted text-sm pb-1">Citations</div>
+                    <ul className="list-disc pl-6 space-y-1">
                     {today.medianCitations.map((c, i) => (
                       <li key={i}>
                         <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
