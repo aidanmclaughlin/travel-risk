@@ -26,23 +26,34 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
 
   const client = new OpenAI({ timeout: 3600 * 1000 });
   const input = buildPrompt();
-
-  const resp = MODEL.includes('deep-research')
-    ? await client.responses.create({
-        model: MODEL,
-        input,
-        tools: [
-          { type: 'web_search_preview' },
-          { type: 'code_interpreter', container: { type: 'auto' } },
-        ],
-        max_output_tokens: 2000,
-      })
-    : await client.responses.create({
-        model: MODEL,
-        input,
-        reasoning: { effort: 'high' },
-        max_output_tokens: 2000,
-      });
+  let resp: Awaited<ReturnType<typeof client.responses.create>>;
+  try {
+    resp = MODEL.includes('deep-research')
+      ? await client.responses.create({
+          model: MODEL,
+          input,
+          tools: [
+            { type: 'web_search_preview' },
+            { type: 'code_interpreter', container: { type: 'auto' } },
+          ],
+          max_output_tokens: 2000,
+        })
+      : await client.responses.create({
+          model: MODEL,
+          input,
+          reasoning: { effort: 'high' },
+          max_output_tokens: 2000,
+        });
+  } catch (err: unknown) {
+    const e = err as { name?: string; message?: string; stack?: string } | undefined;
+    console.error('[LLM] responses.create failed', { name: e?.name, message: e?.message });
+    const p = clamp01(0.2 + randn_bm() * 0.05);
+    return {
+      probability: p,
+      report: 'LLM call failed — using fallback estimate. Check server logs for details.',
+      citations: [],
+    };
+  }
 
   // Try to parse a JSON block first
   const text = (resp.output_text ?? '').trim();
@@ -53,9 +64,13 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
       const { probability, report, citations } = safe.data;
       return { probability, report, citations: citations?.map(c => ({ url: c.url, title: c.title })) ?? [] };
     }
+    console.warn('[LLM] JSON present but schema mismatch', { keys: Object.keys(parsed as object) });
   }
   // Fallback: naive extraction of probability number in [0,1]
   const prob = extractProbability(text);
+  if (prob == null) {
+    console.warn('[LLM] Could not extract probability from text', { length: text.length });
+  }
   return {
     probability: prob ?? 0.2,
     report: text.slice(0, 4000) || 'Model returned no text.',
