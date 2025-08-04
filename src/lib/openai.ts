@@ -106,6 +106,7 @@ function collectOutputText(resp: unknown): string {
   const out = r.output as unknown[] | undefined;
   let buf = '';
   if (Array.isArray(out)) {
+    // First pass: strict message/content with known part types
     for (const item of out) {
       const it = item as U;
       if (it.type !== 'message') continue;
@@ -113,11 +114,49 @@ function collectOutputText(resp: unknown): string {
       if (!Array.isArray(content)) continue;
       for (const part of content) {
         const p = part as U;
-        // Some SDK versions use { type: 'output_text', text }, others { type: 'text', text }
         const t = typeof p.text === 'string' ? p.text : '';
         if ((p.type === 'output_text' || p.type === 'text') && t) buf += t;
       }
     }
+    if (buf.trim()) return buf;
+
+    // Second pass: recursively gather any text-bearing parts under output items
+    const limit = 16000; // defensive cap
+    const seen = new Set<unknown>();
+    function walk(v: unknown): void {
+      if (buf.length >= limit) return;
+      if (v && typeof v === 'object') {
+        if (seen.has(v)) return;
+        seen.add(v);
+        if (Array.isArray(v)) {
+          for (const el of v) walk(el);
+          return;
+        }
+        const o = v as U;
+        const tprop = o.type;
+        const text = o.text;
+        const content = o.content as unknown;
+        // Prefer recognized shapes
+        if ((tprop === 'text' || tprop === 'output_text') && typeof text === 'string' && text) {
+          buf += text;
+        } else if (tprop === 'message') {
+          if (Array.isArray(content)) walk(content);
+          else if (typeof content === 'string') buf += content;
+        } else {
+          // Generic fallbacks inside output items only
+          if (typeof text === 'string' && text) buf += text;
+          if (typeof content === 'string' && content) buf += content;
+          else if (Array.isArray(content)) walk(content);
+          // walk all props shallowly to catch nested 'text' fields
+          for (const k of Object.keys(o)) {
+            const val = (o as U)[k];
+            if (k === 'text' && typeof val === 'string') buf += val;
+            else if (k === 'content') walk(val);
+          }
+        }
+      }
+    }
+    for (const item of out) walk(item);
     if (buf.trim()) return buf;
   }
 
