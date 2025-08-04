@@ -12,6 +12,7 @@ import {
   type ChartData,
   type ChartOptions,
   type TooltipItem,
+  type Plugin,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { useEffect, useMemo, useState } from "react";
@@ -31,6 +32,8 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
     grid: 'rgba(0,0,0,0.08)',
     primary: '#2563eb',
     primaryRGB: '37,99,235',
+    surface: '#ffffff',
+    foreground: '#0f172a',
   });
   useEffect(() => {
     const readVars = () => {
@@ -39,7 +42,9 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       const grid = cs.getPropertyValue('--grid').trim() || 'rgba(0,0,0,0.08)';
       const primary = cs.getPropertyValue('--primary').trim() || '#2563eb';
       const primaryRGB = cs.getPropertyValue('--primary-rgb').trim() || '37,99,235';
-      setTheme({ axis, grid, primary, primaryRGB });
+      const surface = cs.getPropertyValue('--surface').trim() || '#ffffff';
+      const foreground = cs.getPropertyValue('--foreground').trim() || '#0f172a';
+      setTheme({ axis, grid, primary, primaryRGB, surface, foreground });
     };
     readVars();
     const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -120,7 +125,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
         pointHoverRadius: 6,
       },
     ],
-  }), [labels, values, stds]);
+  }), [labels, values, stds, theme.primary, theme.primaryRGB]);
 
   const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
@@ -135,17 +140,84 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       } } },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: theme.axis } },
+      x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
       y: {
         beginAtZero: true,
-        grid: { color: theme.grid },
-        ticks: { color: theme.axis, callback: (value: number | string) => `${value}%` },
+        grid: { display: false },
+        ticks: { display: false },
+        border: { display: false },
       },
     },
     animation: { duration: 700, easing: 'easeOutQuart' },
-  }), [values, stds, theme]);
+  }), [values, stds]);
+
+  // Custom plugin to draw rounded-rectangle labels for each point
+  const labelsPlugin = useMemo<Plugin<'line'>>(() => ({
+    id: 'pointLabelsRounded',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const dsIdx = chart.data.datasets.findIndex((d) => d.label === 'Points');
+      if (dsIdx < 0) return;
+      const meta = chart.getDatasetMeta(dsIdx);
+      ctx.save();
+      const fontFamily = getComputedStyle(document.body).fontFamily || 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
+      ctx.font = `600 10px ${fontFamily}`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+
+      const padX = 6;
+      const radius = 6;
+      const offset = 16;
+      const textColor = theme.foreground;
+      // Surface with slight transparency for overlay effect
+      const fill = theme.surface + 'E6'; // add ~90% alpha if hex, else fallback below
+      const fillStyle = /^#?[0-9A-Fa-f]{6}$/.test(theme.surface) ? fill : 'rgba(255,255,255,0.9)';
+      const strokeStyle = 'rgba(0,0,0,0.12)';
+
+      function roundRect(x: number, y: number, w: number, h: number, r: number) {
+        const rr = Math.min(r, Math.min(w, h) / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+
+      values.forEach((v, i) => {
+        const element = meta.data[i] as unknown as { x: number; y: number };
+        if (!element || typeof element.x !== 'number' || typeof element.y !== 'number') return;
+        const x = element.x;
+        const y = element.y;
+        const label = `${v}%`;
+        const metrics = ctx.measureText(label);
+        const w = Math.ceil(metrics.width) + padX * 2;
+        const h = 18; // fixed height
+        const bx = x - w / 2;
+        let by = y - offset - h;
+        // Avoid clipping top/bottom
+        const topBound = chart.chartArea.top + 4;
+        const bottomBound = chart.chartArea.bottom - 4;
+        if (by < topBound) by = y + offset; // flip below point
+        if (by + h > bottomBound) by = bottomBound - h;
+
+        // Draw box
+        ctx.fillStyle = fillStyle;
+        ctx.strokeStyle = strokeStyle;
+        roundRect(bx, by, w, h, radius);
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw text
+        ctx.fillStyle = textColor;
+        ctx.fillText(label, bx + w / 2, by + h / 2 + 0.5);
+      });
+      ctx.restore();
+    },
+  }), [values, theme.surface, theme.foreground]);
 
   return (
-    <Line data={data} options={options} style={{ width: '100%', height: '100%' }} />
+    <Line data={data} options={options} plugins={[labelsPlugin]} style={{ width: '100%', height: '100%' }} />
   );
 }
