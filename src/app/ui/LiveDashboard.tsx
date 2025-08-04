@@ -16,15 +16,14 @@ export default function LiveDashboard({
 }) {
   const [today, setToday] = useState<DailyResult | null>(initialToday);
   const [history, setHistory] = useState<DailyResult[]>(initialHistory);
-  const [loading, setLoading] = useState(false);
+  // background refresh, but no visible indicator
   const [showReport, setShowReport] = useState(false);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  
 
   useEffect(() => {
     let cancelled = false;
     const poll = async () => {
       try {
-        setLoading(true);
         const [h, t] = await Promise.all([
           fetch("/api/history", { cache: "no-store" }).then((r) => r.json()) as Promise<ApiResp<DailyResult[]>>,
           fetch("/api/daily", { cache: "no-store" }).then((r) => r.json()) as Promise<ApiResp<DailyResult | null>>,
@@ -34,9 +33,6 @@ export default function LiveDashboard({
           if (t?.ok) setToday(t.data);
         }
       } catch {}
-      finally {
-        if (!cancelled) setLoading(false);
-      }
     };
     // initial small delay to allow SSR to paint
     const id = setInterval(poll, 30000);
@@ -45,32 +41,12 @@ export default function LiveDashboard({
     return () => { cancelled = true; clearInterval(id); clearTimeout(once); };
   }, []);
 
-  // Gesture to open report overlay on scroll or swipe down
+  // Only Escape closes the report overlay
   useEffect(() => {
-    const onWheel = (e: WheelEvent) => {
-      if (e.deltaY > 12 && !showReport) setShowReport(true);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.key === 'PageDown' || e.key === 'ArrowDown' || e.key === ' ') && !showReport) setShowReport(true);
-      if (e.key === 'Escape' && showReport) setShowReport(false);
-    };
-    const onTouchStart = (e: TouchEvent) => setTouchStartY(e.touches[0]?.clientY ?? null);
-    const onTouchMove = (e: TouchEvent) => {
-      if (touchStartY == null) return;
-      const dy = (e.touches[0]?.clientY ?? touchStartY) - touchStartY;
-      if (dy < -18 && !showReport) setShowReport(true);
-    };
-    window.addEventListener('wheel', onWheel, { passive: true });
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && showReport) setShowReport(false); };
     window.addEventListener('keydown', onKey);
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    return () => {
-      window.removeEventListener('wheel', onWheel);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-    };
-  }, [showReport, touchStartY]);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showReport]);
 
   const labels = useMemo(() => history.map((h) => h.date), [history]);
   const values = useMemo(() => history.map((h) => Math.round(h.average * 1000) / 10), [history]);
@@ -93,7 +69,7 @@ export default function LiveDashboard({
   return (
     <div className="min-h-screen flex flex-col">
       <div className="relative h-[34vh] flex items-center justify-center px-4 text-center">
-        <div className="absolute right-3 top-3 text-[10px] sm:text-xs muted">{loading ? 'Refreshing…' : 'Live'}</div>
+        {/* removed live/updating indicator */}
         <div>
           <div className="uppercase tracking-wider muted text-xs sm:text-sm">Daily Travel Risk</div>
           <div className="font-extrabold leading-tight" style={{ color: heat(avgPct) }}>
@@ -121,7 +97,7 @@ export default function LiveDashboard({
             <svg className="animate-bounce-slow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
-            <span className="mt-0.5">Scroll for report</span>
+            <span className="mt-0.5">Open report</span>
           </div>
         </button>
       </div>
@@ -157,7 +133,7 @@ export default function LiveDashboard({
                   </button>
                 </div>
               </div>
-              <div className="p-5 sm:p-6 overflow-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
+              <div className="p-5 sm:p-6 overflow-hidden" style={{ maxHeight: 'calc(85vh - 64px)' }}>
                 <Markdown content={today.medianReport} />
               {today.medianCitations?.length ? (
                 <div className="pt-4">

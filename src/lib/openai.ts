@@ -76,7 +76,7 @@ Do:
 - Return a single probability in [0,1]. The probability should reflect the base rate for a typical non-citizen traveler under current conditions.
 - Also write an extensive, well-structured Markdown report (300–700 words) with headings, bullet points, and clear, readable sections, suitable for direct rendering.
 
-Return JSON ONLY with the following shape and no extra keys (do not include any text before or after this JSON):
+At the end of your response, include a JSON object with the following shape and no extra keys:
 {
   "probability": <number 0..1>,
   "report": "<extensive Markdown report>",

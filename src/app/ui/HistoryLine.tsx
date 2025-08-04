@@ -11,7 +11,6 @@ import {
   type ScriptableContext,
   type ChartData,
   type ChartOptions,
-  type TooltipItem,
   type Plugin,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
@@ -101,7 +100,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
         fill: false,
         tension: 0.35,
         pointRadius: 0,
-        pointHoverRadius: 3,
+        pointHoverRadius: 0,
       },
       // Heat-colored points overlay
       {
@@ -122,7 +121,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
         pointBorderWidth: 1,
         showLine: false,
         pointRadius: 3,
-        pointHoverRadius: 6,
+        pointHoverRadius: 0,
       },
     ],
   }), [labels, values, stds, theme.primary, theme.primaryRGB]);
@@ -133,13 +132,9 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
     layout: { padding: { left: 24, right: 24 } },
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: (ctx: TooltipItem<'line'>) => {
-        const i = ctx.dataIndex;
-        const v = values[i] ?? 0;
-        const s = stds[i] ?? 0;
-        return `Avg ${v}% ± ${s}%`;
-      } } },
+      tooltip: { enabled: false },
     },
+    events: [],
     scales: {
       x: { grid: { display: false }, ticks: { display: false }, border: { display: false }, offset: true },
       y: {
@@ -157,9 +152,11 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
     id: 'pointLabelsRounded',
     afterDatasetsDraw(chart) {
       const { ctx } = chart;
-      const dsIdx = chart.data.datasets.findIndex((d) => d.label === 'Points');
-      if (dsIdx < 0) return;
-      const meta = chart.getDatasetMeta(dsIdx);
+      const ptsIdx = chart.data.datasets.findIndex((d) => d.label === 'Points');
+      const lineIdx = chart.data.datasets.findIndex((d) => d.label === 'Avg risk %');
+      if (ptsIdx < 0 || lineIdx < 0) return;
+      const metaPts = chart.getDatasetMeta(ptsIdx);
+      const metaLine = chart.getDatasetMeta(lineIdx);
       ctx.save();
       const fontFamily = getComputedStyle(document.body).fontFamily || 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
       ctx.font = `600 10px ${fontFamily}`;
@@ -186,8 +183,37 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
         ctx.closePath();
       }
 
+      // Draw error bars first (behind labels)
+      const yScale = (chart.scales as unknown as { y: { getPixelForValue: (v: number) => number } }).y;
+      const cap = 8;
+      ctx.strokeStyle = `rgba(${theme.primaryRGB},0.6)`;
+      ctx.lineWidth = 1.5;
       values.forEach((v, i) => {
-        const element = meta.data[i] as unknown as { x: number; y: number };
+        const elem = metaLine.data[i] as unknown as { x: number } | undefined;
+        if (!elem) return;
+        const ex = elem as unknown as { x: number };
+        if (typeof ex.x !== 'number') return;
+        const x = ex.x;
+        const s = stds[i] ?? 0;
+        const topV = Math.min(100, v + s);
+        const botV = Math.max(0, v - s);
+        const yTop = yScale.getPixelForValue(topV);
+        const yBot = yScale.getPixelForValue(botV);
+        ctx.beginPath();
+        ctx.moveTo(x, yTop);
+        ctx.lineTo(x, yBot);
+        ctx.stroke();
+        // caps
+        ctx.beginPath();
+        ctx.moveTo(x - cap / 2, yTop);
+        ctx.lineTo(x + cap / 2, yTop);
+        ctx.moveTo(x - cap / 2, yBot);
+        ctx.lineTo(x + cap / 2, yBot);
+        ctx.stroke();
+      });
+
+      values.forEach((v, i) => {
+        const element = metaPts.data[i] as unknown as { x: number; y: number };
         if (!element || typeof element.x !== 'number' || typeof element.y !== 'number') return;
         const x = element.x;
         const y = element.y;

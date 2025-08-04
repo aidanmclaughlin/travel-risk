@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
   if (desired < 25) desired = 25;
 
   if (existing && existing.runCount >= desired) {
-    const rest = (({ model: _m, ...r }) => r)(existing);
+    const { model: _m, ...rest } = existing;
+    void _m;
     return NextResponse.json({ ok: true, data: rest });
   }
 
