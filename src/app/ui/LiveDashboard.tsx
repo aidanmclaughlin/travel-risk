@@ -78,6 +78,10 @@ export default function LiveDashboard({
   const avgPct = today ? Math.round((today.average || 0) * 1000) / 10 : null;
   const stdPct = today ? Math.round((today.stddev || 0) * 1000) / 10 : null;
   const runs = today?.runCount ?? null;
+  const updatedStr = useMemo(() => {
+    if (!today?.computedAt) return null;
+    try { return new Date(today.computedAt).toLocaleString(); } catch { return today.computedAt; }
+  }, [today?.computedAt]);
 
   const heat = (v: number | null) => {
     const x = v == null ? 0 : Math.max(0, Math.min(100, v));
@@ -104,11 +108,17 @@ export default function LiveDashboard({
           </div>
         </button>
         <div className="absolute right-3 top-3 text-[10px] sm:text-xs text-gray-500">{loading ? 'Refreshing…' : 'Live'}</div>
-        <div className="absolute right-3 top-6 sm:top-8 font-bold tracking-tight" style={{ color: heat(avgPct) }}>
-          <span className="text-3xl sm:text-4xl">{avgPct !== null ? `${avgPct}%` : '—'}</span>
-          {typeof stdPct === 'number' && (
-            <span className="ml-2 text-xs sm:text-sm text-gray-500 align-middle">± {stdPct}%</span>
-          )}
+        <div className="absolute left-3 top-6 sm:top-8 text-lg sm:text-xl font-semibold tracking-tight">Daily Travel Risk</div>
+        <div className="absolute right-3 top-6 sm:top-8 text-right">
+          <div className="font-bold tracking-tight" style={{ color: heat(avgPct) }}>
+            <span className="text-3xl sm:text-4xl">{avgPct !== null ? `${avgPct}%` : '—'}</span>
+            {typeof stdPct === 'number' && (
+              <span className="ml-2 text-xs sm:text-sm text-gray-500 align-middle">± {stdPct}%</span>
+            )}
+          </div>
+          <div className="mt-1 text-[10px] sm:text-xs text-gray-500">
+            {updatedStr ? `Updated ${updatedStr}` : ''}{runs != null ? (updatedStr ? ' • ' : '') + `Runs ${runs}` : ''}
+          </div>
         </div>
       </div>
 
