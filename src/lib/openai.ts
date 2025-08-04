@@ -181,21 +181,34 @@ function summarizeResponseShape(resp: unknown) {
   const outType = outArr ? 'array' : typeof outUnknown;
   const outLen = outArr?.length;
   let firstMessageParts: string[] | undefined;
+  let firstItemType: string | undefined;
+  let firstItemKeys: string[] | undefined;
+  let firstItemContentShape: { type: string; len?: number } | undefined;
   if (outArr && outArr.length) {
     const first = outArr[0] as U;
+    firstItemType = typeof (first as U)?.type === 'string' ? String((first as U)?.type) : undefined;
+    firstItemKeys = Object.keys(first as object);
     if ((first as U)?.type === 'message') {
       const content = (first as U)?.content as unknown[] | undefined;
       if (Array.isArray(content)) {
         firstMessageParts = content
           .map((p) => (p as U)?.type)
           .filter((t): t is string => typeof t === 'string');
+        firstItemContentShape = { type: 'array', len: content.length };
+      } else if (typeof content === 'string') {
+        firstItemContentShape = { type: 'string' };
       }
     }
   }
   const agg = (r as U)?.output_text as unknown;
   const hasAgg = typeof agg === 'string' && agg.length > 0;
   const model = (r as U)?.model as unknown;
-  return { keys, model, output: { type: outType, len: outLen, firstMessageParts }, hasOutputText: hasAgg };
+  return {
+    keys,
+    model,
+    output: { type: outType, len: outLen, firstMessageParts, firstItemType, firstItemKeys, firstItemContent: firstItemContentShape },
+    hasOutputText: hasAgg,
+  };
 }
 
 function buildPrompt() {
