@@ -37,12 +37,15 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
             { type: 'web_search_preview' },
             { type: 'code_interpreter', container: { type: 'auto' } },
           ],
+          // Request aggregated text output for consistency across models/SDK versions
+          text: { format: { type: 'text' } },
           max_output_tokens: 2000,
         })
       : await client.responses.create({
           model: MODEL,
           input,
           reasoning: { effort: 'high' },
+          text: { format: { type: 'text' } },
           max_output_tokens: 2000,
         });
   } catch (err: unknown) {
@@ -61,7 +64,15 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   if (!text) {
     // Fallback: collect text from response.output tree
     text = collectOutputText(resp).trim();
-    if (!text) console.warn('[LLM] output_text empty and collected text empty');
+    if (!text) {
+      // Try to provide a compact structural summary for debugging in production logs
+      try {
+        const s = summarizeResponseShape(resp);
+        console.warn('[LLM] output_text empty and collected text empty — response shape', s);
+      } catch {
+        console.warn('[LLM] output_text empty and collected text empty');
+      }
+    }
   }
   const parsed = extractJson(text);
   if (parsed) {
@@ -120,6 +131,32 @@ function collectOutputText(resp: unknown): string {
   }
 
   return '';
+}
+
+function summarizeResponseShape(resp: unknown) {
+  type U = Record<string, unknown>;
+  const r = resp as U | null | undefined;
+  const keys = r && typeof r === 'object' ? Object.keys(r as object) : [];
+  const outUnknown = (r as U)?.output as unknown;
+  const outArr = Array.isArray(outUnknown) ? (outUnknown as unknown[]) : undefined;
+  const outType = outArr ? 'array' : typeof outUnknown;
+  const outLen = outArr?.length;
+  let firstMessageParts: string[] | undefined;
+  if (outArr && outArr.length) {
+    const first = outArr[0] as U;
+    if ((first as U)?.type === 'message') {
+      const content = (first as U)?.content as unknown[] | undefined;
+      if (Array.isArray(content)) {
+        firstMessageParts = content
+          .map((p) => (p as U)?.type)
+          .filter((t): t is string => typeof t === 'string');
+      }
+    }
+  }
+  const agg = (r as U)?.output_text as unknown;
+  const hasAgg = typeof agg === 'string' && agg.length > 0;
+  const model = (r as U)?.model as unknown;
+  return { keys, model, output: { type: outType, len: outLen, firstMessageParts }, hasOutputText: hasAgg };
 }
 
 function buildPrompt() {
