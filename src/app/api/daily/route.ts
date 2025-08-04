@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deepResearchRisk } from '@/lib/openai';
-import { loadDaily, saveDaily } from '@/lib/store';
-import { DailyResult } from '@/lib/types';
+import { loadDaily, saveDaily, saveDailyRun } from '@/lib/store';
+import { DailyResult, RunDetail } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +33,18 @@ export async function GET(req: NextRequest) {
   const newRuns = await Promise.all(Array.from({ length: missing }, () => deepResearchRisk()));
   const estimates = [...baseEstimates, ...newRuns.map((r) => r.probability)];
 
+  // Persist each new run as its own artifact and aggregate detailed runs
+  const existingDetails: RunDetail[] = (existing as DailyResult | undefined)?.runsDetailed ?? [];
+  const offset = existing?.runCount ?? 0;
+  const newDetails: RunDetail[] = newRuns.map((r) => ({
+    probability: r.probability,
+    report: r.report,
+    citations: r.citations,
+    computedAt: new Date().toISOString(),
+  }));
+  await Promise.all(newDetails.map((run, i) => saveDailyRun(date, offset + i, run)));
+  const allDetails: RunDetail[] = [...existingDetails, ...newDetails];
+
   const runCount = estimates.length;
   const avg = estimates.reduce((a, b) => a + b, 0) / runCount;
   const sorted = [...estimates].sort((a, b) => a - b);
@@ -41,22 +53,16 @@ export async function GET(req: NextRequest) {
     estimates.reduce((acc, v) => acc + Math.pow(v - avg, 2), 0) / runCount
   );
 
-  // Choose a report nearest to the median from only the new runs if none existed, otherwise prefer the closest overall
+  // Choose the run nearest to the median across all runs and use its report/citations
   let minIdx = -1;
   let minDelta = Number.POSITIVE_INFINITY;
   for (let i = 0; i < runCount; i++) {
     const d = Math.abs(estimates[i] - median);
-    if (d < minDelta) {
-      minDelta = d;
-      minIdx = i;
-    }
+    if (d < minDelta) { minDelta = d; minIdx = i; }
   }
-
-  // Build citations aligned to indices; if an index came from existing but we don't have per-run reports stored, fall back to today's closest from new runs
-  const newReportsOnly = newRuns.map(r => r.report);
-  const newCitationsOnly = newRuns.map(r => r.citations);
-  const reportForMedian = minIdx >= (existing?.runCount ?? 0) ? newReportsOnly[minIdx - (existing?.runCount ?? 0)] : (newReportsOnly[0] || existing?.medianReport || '');
-  const citationsForMedian = minIdx >= (existing?.runCount ?? 0) ? newCitationsOnly[minIdx - (existing?.runCount ?? 0)] : (newCitationsOnly[0] || existing?.medianCitations || []);
+  const chosen = allDetails[minIdx] ?? newDetails[0] ?? existingDetails[0];
+  const reportForMedian = chosen?.report || '';
+  const citationsForMedian = chosen?.citations || [];
 
   const result: DailyResult = {
     date,
@@ -70,6 +76,7 @@ export async function GET(req: NextRequest) {
     medianCitations: citationsForMedian,
     computedAt: new Date().toISOString(),
     destination: null,
+    runsDetailed: allDetails,
   };
 
   await saveDaily(result);
