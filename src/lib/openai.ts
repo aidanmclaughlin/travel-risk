@@ -45,6 +45,9 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
           model: MODEL,
           input,
           reasoning: { effort: 'high' },
+          // Encourage plain text output and avoid tool plans for non deep-research runs
+          tool_choice: 'none',
+          parallel_tool_calls: false,
           text: { format: { type: 'text' } },
           max_output_tokens: 2000,
         });
