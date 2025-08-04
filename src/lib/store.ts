@@ -63,10 +63,16 @@ export async function listHistory(): Promise<DailyResult[]> {
     const { blobs } = await list({ prefix: 'daily/' });
     const jsons: DailyResult[] = [];
     for (const b of blobs) {
+      // Only include top-level daily files like daily/YYYY-MM-DD.json, skip nested runs
       if (!b.pathname.endsWith('.json')) continue;
+      const parts = b.pathname.split('/');
+      if (parts.length !== 2) continue; // skip anything under subdirectories (e.g., runs)
       const res = await fetch(b.url, { cache: 'no-store' });
       if (!res.ok) continue;
-      try { jsons.push(await res.json() as DailyResult); } catch {}
+      try {
+        const j = await res.json();
+        if (j && typeof j.date === 'string') jsons.push(j as DailyResult);
+      } catch {}
     }
     jsons.sort((a, b) => a.date.localeCompare(b.date));
     return jsons;
