@@ -13,17 +13,6 @@ export default async function Home() {
   const history = await listHistory();
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-2 text-center">
-        <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight">
-          Daily Travel Risk
-        </h1>
-        <p className="muted text-base">
-          Estimated chance of visa or entry hiccups for U.S. non‑citizens returning within 30 days.
-        </p>
-      </header>
-
-      <LiveDashboard initialToday={today || null} initialHistory={history} />
-    </div>
+    <LiveDashboard initialToday={today || null} initialHistory={history} />
   );
 }

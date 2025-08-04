@@ -134,6 +134,6 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
   }), [values, stds, dark]);
 
   return (
-    <Line data={data} options={options} />
+    <Line data={data} options={options} style={{ width: '100%', height: '100%' }} />
   );
 }
