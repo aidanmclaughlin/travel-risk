@@ -6,27 +6,35 @@ html, body {
   height: 100%;
 }
 
-/* Subtle gradient background */
+/* Subtle themed background gradient */
 body {
   background:
-    radial-gradient(1100px 700px at 80% -10%, color-mix(in oklab, #60a5fa 40%, transparent) 0%, rgba(147,197,253,0) 60%),
-    radial-gradient(1100px 700px at -20% 10%, color-mix(in oklab, #a78bfa 40%, transparent) 0%, rgba(216,180,254,0) 60%),
+    radial-gradient(1200px 800px at 80% -10%, color-mix(in oklab, var(--primary) 32%, transparent) 0%, rgba(0,0,0,0) 60%),
+    radial-gradient(1200px 800px at -20% 10%, color-mix(in oklab, var(--accent) 26%, transparent) 0%, rgba(0,0,0,0) 60%),
     var(--background);
 }
 
 .card {
   border-radius: 1rem;
-  background: color-mix(in oklab, white 74%, transparent);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
   backdrop-filter: saturate(140%) blur(10px);
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.06);
+  border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
 }
 
-.muted { color: #6b7280; }
+.muted { color: var(--muted); }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f7fb;
+  --surface: #ffffff;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --primary: #3b82f6;
+  --primary-rgb: 59,130,246;
+  --accent: #8b5cf6;
+  --accent-rgb: 139,92,246;
+  --axis: #334155;
+  --grid: rgba(15,23,42,0.08);
 }
 
 @theme inline {
@@ -38,16 +46,20 @@ body {
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b1222;
+    --surface: #0f172a;
+    --foreground: #e5e7eb;
+    --muted: #94a3b8;
+    --primary: #60a5fa;
+    --primary-rgb: 96,165,250;
+    --accent: #a78bfa;
+    --accent-rgb: 167,139,250;
+    --axis: #cbd5e1;
+    --grid: rgba(255,255,255,0.12);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+body { color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
 
 @keyframes pop-in {
   0%   { transform: translateY(12px) scale(0.96); opacity: 0; }
@@ -61,3 +73,7 @@ body {
 }
 
 .animate-bounce-slow { animation: bounce-slow 1.6s ease-in-out infinite; }
+
+/* Helper classes tied to theme variables */
+.surface-bg { background: var(--surface); }
+.surface-border { border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent); }

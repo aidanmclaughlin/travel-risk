@@ -89,12 +89,26 @@ export default function LiveDashboard({
     return `hsl(${hue}, 72%, 44%)`;
   };
 
-  const TOP_SPACE = 80;
-
   return (
-    <div className="relative">
-      <div className="fixed inset-0 z-0">
-        <div className="w-full" style={{ height: `calc(100% - ${TOP_SPACE}px)`, marginTop: TOP_SPACE }}>
+    <div className="min-h-screen flex flex-col">
+      <div className="relative h-[34vh] flex items-center justify-center px-4 text-center">
+        <div className="absolute right-3 top-3 text-[10px] sm:text-xs muted">{loading ? 'Refreshing…' : 'Live'}</div>
+        <div>
+          <div className="uppercase tracking-wider muted text-xs sm:text-sm">Daily Travel Risk</div>
+          <div className="font-extrabold leading-tight" style={{ color: heat(avgPct) }}>
+            <span className="text-6xl sm:text-7xl md:text-8xl">{avgPct !== null ? `${avgPct}%` : '—'}</span>
+            {typeof stdPct === 'number' && (
+              <span className="ml-3 text-base sm:text-lg md:text-xl align-middle muted">± {stdPct}%</span>
+            )}
+          </div>
+          <div className="mt-2 text-xs sm:text-sm muted">
+            {updatedStr ? `Updated ${updatedStr}` : ''}{runs != null ? (updatedStr ? ' • ' : '') + `Runs ${runs}` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative h-[66vh]">
+        <div className="absolute inset-0">
           <HistoryLine labels={labels} values={values} stds={stds} />
         </div>
         <button
@@ -102,40 +116,28 @@ export default function LiveDashboard({
           onClick={() => setShowReport(true)}
           className="absolute left-1/2 -translate-x-1/2 bottom-2 opacity-80 hover:opacity-100 transition-opacity"
         >
-          <div className="flex flex-col items-center text-[10px] sm:text-xs text-gray-600">
+          <div className="flex flex-col items-center text-[10px] sm:text-xs muted">
             <svg className="animate-bounce-slow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
             <span className="mt-0.5">Scroll for report</span>
           </div>
         </button>
-        <div className="absolute right-3 top-3 text-[10px] sm:text-xs text-gray-500">{loading ? 'Refreshing…' : 'Live'}</div>
-        <div className="absolute left-3 top-6 sm:top-8 text-lg sm:text-xl font-semibold tracking-tight">Daily Travel Risk</div>
-        <div className="absolute right-3 top-6 sm:top-8 text-right">
-          <div className="font-bold tracking-tight" style={{ color: heat(avgPct) }}>
-            <span className="text-3xl sm:text-4xl">{avgPct !== null ? `${avgPct}%` : '—'}</span>
-            {typeof stdPct === 'number' && (
-              <span className="ml-2 text-xs sm:text-sm text-gray-500 align-middle">± {stdPct}%</span>
-            )}
-          </div>
-          <div className="mt-1 text-[10px] sm:text-xs text-gray-500">
-            {updatedStr ? `Updated ${updatedStr}` : ''}{runs != null ? (updatedStr ? ' • ' : '') + `Runs ${runs}` : ''}
-          </div>
-        </div>
       </div>
 
       {showReport && today?.medianReport && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowReport(false)} />
-          <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:my-auto sm:max-w-3xl sm:mx-auto bg-white text-black rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)]">
-            <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3">
+          <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:my-auto sm:max-w-3xl sm:mx-auto surface-bg surface-border rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)]" style={{ color: 'var(--foreground)' }}>
+            <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'color-mix(in oklab, var(--foreground) 8%, transparent)', borderStyle: 'solid' }}>
               <h2 className="text-lg font-semibold">Median Report</h2>
               <div className="flex items-center gap-2">
                 {today?.date && (
                   <a
                     href={`/api/pdf?day=${today.date}`}
                     aria-label="Download PDF"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100"
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-md"
+                    style={{ background: 'transparent' }}
                     title="Download PDF"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -145,7 +147,7 @@ export default function LiveDashboard({
                     </svg>
                   </a>
                 )}
-                <button onClick={() => setShowReport(false)} className="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100" aria-label="Close">
+                <button onClick={() => setShowReport(false)} className="inline-flex items-center justify-center w-8 h-8 rounded-md" aria-label="Close" style={{ background: 'transparent' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
@@ -161,7 +163,7 @@ export default function LiveDashboard({
                   <ul className="list-disc pl-6 space-y-1">
                     {today.medianCitations.map((c, i) => (
                       <li key={i}>
-                        <a className="text-blue-600 hover:underline" href={c.url} target="_blank" rel="noreferrer">
+                        <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
                           {c.title || c.url}
                         </a>
                       </li>

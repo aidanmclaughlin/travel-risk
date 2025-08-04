@@ -26,13 +26,25 @@ ChartJS.register(
 );
 
 export default function HistoryLine({ labels, values, stds }: { labels: string[]; values: number[]; stds: number[] }) {
-  const [dark, setDark] = useState(false);
+  const [theme, setTheme] = useState({
+    axis: '#1f2937',
+    grid: 'rgba(0,0,0,0.08)',
+    primary: '#2563eb',
+    primaryRGB: '37,99,235',
+  });
   useEffect(() => {
+    const readVars = () => {
+      const cs = getComputedStyle(document.documentElement);
+      const axis = cs.getPropertyValue('--axis').trim() || '#1f2937';
+      const grid = cs.getPropertyValue('--grid').trim() || 'rgba(0,0,0,0.08)';
+      const primary = cs.getPropertyValue('--primary').trim() || '#2563eb';
+      const primaryRGB = cs.getPropertyValue('--primary-rgb').trim() || '37,99,235';
+      setTheme({ axis, grid, primary, primaryRGB });
+    };
+    readVars();
     const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
-    const apply = () => setDark(!!mq?.matches);
-    apply();
-    mq?.addEventListener?.('change', apply);
-    return () => mq?.removeEventListener?.('change', apply);
+    mq?.addEventListener?.('change', readVars);
+    return () => mq?.removeEventListener?.('change', readVars);
   }, []);
 
   const colorFor = (v: number) => {
@@ -64,9 +76,9 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
         backgroundColor: (ctx: ScriptableContext<'line'>) => {
           const { chart } = ctx;
           const { ctx: c } = chart;
-          const g = c.createLinearGradient(0, 0, 0, 120);
-          g.addColorStop(0, "rgba(37,99,235,0.18)");
-          g.addColorStop(1, "rgba(17,24,39,0)");
+          const g = c.createLinearGradient(0, 0, 0, 140);
+          g.addColorStop(0, `rgba(${theme.primaryRGB},0.18)`);
+          g.addColorStop(1, `rgba(${theme.primaryRGB},0.00)`);
           return g;
         },
         fill: '-1',
@@ -78,8 +90,8 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       {
         label: "Avg risk %",
         data: values,
-        borderColor: "#2563eb",
-        backgroundColor: "rgba(37,99,235,0.2)",
+        borderColor: theme.primary,
+        backgroundColor: `rgba(${theme.primaryRGB},0.2)`,
         borderWidth: 3,
         fill: false,
         tension: 0.35,
@@ -123,15 +135,15 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       } } },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: dark ? '#e5e7eb' : '#1f2937' } },
+      x: { grid: { display: false }, ticks: { color: theme.axis } },
       y: {
         beginAtZero: true,
-        grid: { color: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' },
-        ticks: { color: dark ? '#e5e7eb' : '#1f2937', callback: (value: number | string) => `${value}%` },
+        grid: { color: theme.grid },
+        ticks: { color: theme.axis, callback: (value: number | string) => `${value}%` },
       },
     },
     animation: { duration: 700, easing: 'easeOutQuart' },
-  }), [values, stds, dark]);
+  }), [values, stds, theme]);
 
   return (
     <Line data={data} options={options} style={{ width: '100%', height: '100%' }} />
