@@ -7,7 +7,7 @@ const MODEL = process.env.DR_MODEL || 'o3';
 
 const OutputSchema = z.object({
   probability: z.number().min(0).max(1),
-  reasoning: z.string(),
+  report: z.string(),
   citations: z.array(z.object({ url: z.string().url().or(z.string()), title: z.string().optional() })).optional().default([]),
 });
 
@@ -50,8 +50,8 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   if (parsed) {
     const safe = OutputSchema.safeParse(parsed);
     if (safe.success) {
-      const { probability, reasoning, citations } = safe.data;
-      return { probability, report: reasoning, citations: citations?.map(c => ({ url: c.url, title: c.title })) ?? [] };
+      const { probability, report, citations } = safe.data;
+      return { probability, report, citations: citations?.map(c => ({ url: c.url, title: c.title })) ?? [] };
     }
   }
   // Fallback: naive extraction of probability number in [0,1]
@@ -74,12 +74,12 @@ Do:
 - Prioritize official U.S. government sources (DHS, CBP, USCIS, DOS), airline/airport advisories, and reputable press when citing.
 - Consider traveler variability: visa categories, countries of origin, and recent policy changes. When aggregating, be conservative.
 - Return a single probability in [0,1]. The probability should reflect the base rate for a typical non-citizen traveler under current conditions.
-- Include a concise reasoning summary and citations.
+- Also write an extensive, well-structured Markdown report (300–700 words) with headings, bullet points, and clear, readable sections, suitable for direct rendering.
 
-Return JSON ONLY with the following shape and no extra keys:
+Return JSON ONLY with the following shape and no extra keys (do not include any text before or after this JSON):
 {
   "probability": <number 0..1>,
-  "reasoning": "<100-250 words explaining the estimate>",
+  "report": "<extensive Markdown report>",
   "citations": [ { "url": "<source url>", "title": "<optional>" }, ... ]
 }
 

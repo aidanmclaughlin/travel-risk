@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import HistoryLine from "./HistoryLine";
 import type { DailyResult } from "@/lib/types";
+import Markdown from "./Markdown";
 
 type ApiResp<T> = { ok: boolean; data: T };
 
@@ -128,35 +129,36 @@ export default function LiveDashboard({
       {showReport && today?.medianReport && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowReport(false)} />
-          <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:my-auto sm:max-w-3xl sm:mx-auto surface-bg surface-border rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)]" style={{ color: 'var(--foreground)' }}>
-            <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'color-mix(in oklab, var(--foreground) 8%, transparent)', borderStyle: 'solid' }}>
-              <h2 className="text-lg font-semibold">Median Report</h2>
-              <div className="flex items-center gap-2">
-                {today?.date && (
-                  <a
-                    href={`/api/pdf?day=${today.date}`}
-                    aria-label="Download PDF"
+          <div className="absolute inset-4 sm:inset-8 md:inset-10 flex items-center justify-center">
+            <div className="surface-bg surface-border rounded-2xl shadow-2xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)] w-full max-w-4xl" style={{ color: 'var(--foreground)', maxHeight: '85vh' }}>
+              <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'color-mix(in oklab, var(--foreground) 8%, transparent)', borderStyle: 'solid' }}>
+                <h2 className="text-lg font-semibold">Median Report</h2>
+                <div className="flex items-center gap-2">
+                  {today?.date && (
+                    <a
+                      href={`/api/pdf?day=${today.date}`}
+                      aria-label="Download PDF"
                     className="inline-flex items-center justify-center w-8 h-8 rounded-md"
                     style={{ background: 'transparent' }}
-                    title="Download PDF"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                  </a>
-                )}
+                      title="Download PDF"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                    </a>
+                  )}
                 <button onClick={() => setShowReport(false)} className="inline-flex items-center justify-center w-8 h-8 rounded-md" aria-label="Close" style={{ background: 'transparent' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="p-5 sm:p-6 max-h-[70vh] overflow-auto">
-              <p className="leading-7 whitespace-pre-wrap">{today.medianReport}</p>
+              <div className="p-5 sm:p-6 overflow-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
+                <Markdown content={today.medianReport} />
               {today.medianCitations?.length ? (
                 <div className="pt-4">
                   <div className="muted text-sm pb-1">Citations</div>
@@ -171,9 +173,10 @@ export default function LiveDashboard({
                   </ul>
                 </div>
               ) : null}
+              </div>
             </div>
           </div>
-        </div>
+          </div>
       )}
     </div>
   );

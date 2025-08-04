@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const run = await deepResearchRisk();
     data = {
       date,
-      model: process.env.DR_MODEL || 'o3',
+      model: '',
       runCount: 1,
       average: run.probability,
       median: run.probability,
