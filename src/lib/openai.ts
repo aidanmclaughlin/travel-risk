@@ -25,7 +25,8 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   }
 
   const client = new OpenAI({ timeout: 3600 * 1000 });
-  const input = buildPrompt();
+  const prompt = buildPrompt();
+  const input = [{ role: 'user' as const, content: prompt }];
   let resp: Awaited<ReturnType<typeof client.responses.create>>;
   try {
     resp = MODEL.includes('deep-research')
@@ -56,7 +57,12 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   }
 
   // Try to parse a JSON block first
-  const text = (resp.output_text ?? '').trim();
+  let text = (resp.output_text ?? '').trim();
+  if (!text) {
+    // Fallback: collect text from response.output tree
+    text = collectOutputText(resp).trim();
+    if (!text) console.warn('[LLM] output_text empty and collected text empty');
+  }
   const parsed = extractJson(text);
   if (parsed) {
     const safe = OutputSchema.safeParse(parsed);
@@ -76,6 +82,25 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
     report: text.slice(0, 4000) || 'Model returned no text.',
     citations: [],
   };
+}
+
+function collectOutputText(resp: unknown): string {
+  type U = Record<string, unknown>;
+  const r = resp as U;
+  const out = r.output as unknown[] | undefined;
+  if (!out) return '';
+  let buf = '';
+  for (const item of out) {
+    const it = item as U;
+    if (it.type !== 'message') continue;
+    const content = it.content as unknown[] | undefined;
+    if (!content) continue;
+    for (const part of content) {
+      const p = part as U;
+      if (p.type === 'output_text' && typeof p.text === 'string') buf += p.text;
+    }
+  }
+  return buf;
 }
 
 function buildPrompt() {
@@ -103,16 +128,28 @@ Date (UTC): ${new Date().toISOString().slice(0, 10)}
 }
 
 function extractJson(text: string): unknown | null {
-  // Find first JSON object
+  // Prefer a JSON object at the end that contains the key "probability"
+  const endAnchored = text.match(/({[\s\S]*"probability"[\s\S]*})\s*$/);
+  if (endAnchored) {
+    try { return JSON.parse(endAnchored[1]); } catch {}
+  }
+  // Fallback: take the last occurrence of a JSON-looking object that has "probability"
+  const probIdx = text.lastIndexOf('"probability"');
+  if (probIdx !== -1) {
+    // naive expansion to nearest braces around the index
+    const start = text.lastIndexOf('{', probIdx);
+    const end = text.indexOf('}', probIdx);
+    if (start !== -1 && end !== -1 && end > start) {
+      const maybe = text.slice(start, end + 1);
+      try { return JSON.parse(maybe); } catch {}
+    }
+  }
+  // Last resort: original broad slice (may fail if braces exist earlier in the report)
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start === -1 || end === -1 || end <= start) return null;
-  const maybe = text.slice(start, end + 1);
-  try {
-    return JSON.parse(maybe);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(text.slice(start, end + 1)); } catch {}
+  return null;
 }
 
 function extractProbability(text: string): number | null {
