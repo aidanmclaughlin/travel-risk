@@ -89,10 +89,12 @@ export default function LiveDashboard({
     return `hsl(${hue}, 72%, 44%)`;
   };
 
+  const TOP_SPACE = 80;
+
   return (
     <div className="relative">
       <div className="fixed inset-0 z-0">
-        <div className="w-full h-full">
+        <div className="w-full" style={{ height: `calc(100% - ${TOP_SPACE}px)`, marginTop: TOP_SPACE }}>
           <HistoryLine labels={labels} values={values} stds={stds} />
         </div>
         <button

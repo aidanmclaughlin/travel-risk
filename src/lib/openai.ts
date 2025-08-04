@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { SingleEstimate } from './types';
 
 const SIMULATE = (process.env.SIMULATE_DEEP_RESEARCH ?? '').toLowerCase() === 'true' || !process.env.OPENAI_API_KEY;
-const MODEL = process.env.DR_MODEL || 'o3-deep-research';
+const MODEL = process.env.DR_MODEL || 'o3';
 
 const OutputSchema = z.object({
   probability: z.number().min(0).max(1),
@@ -27,15 +27,22 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
   const client = new OpenAI({ timeout: 3600 * 1000 });
   const input = buildPrompt();
 
-  const resp = await client.responses.create({
-    model: MODEL,
-    input,
-    tools: [
-      { type: 'web_search_preview' },
-      { type: 'code_interpreter', container: { type: 'auto' } },
-    ],
-    max_output_tokens: 2000,
-  });
+  const resp = MODEL.includes('deep-research')
+    ? await client.responses.create({
+        model: MODEL,
+        input,
+        tools: [
+          { type: 'web_search_preview' },
+          { type: 'code_interpreter', container: { type: 'auto' } },
+        ],
+        max_output_tokens: 2000,
+      })
+    : await client.responses.create({
+        model: MODEL,
+        input,
+        reasoning: { effort: 'high' },
+        max_output_tokens: 2000,
+      });
 
   // Try to parse a JSON block first
   const text = (resp.output_text ?? '').trim();
