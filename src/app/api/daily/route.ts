@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
   if (desired < 25) desired = 25;
 
   if (existing && existing.runCount >= desired) {
-    // Return redacted model to avoid leaking unreleased model names
-    return NextResponse.json({ ok: true, data: { ...existing, model: 'private' } });
+    const rest = (({ model, ...r }) => r)(existing);
+    return NextResponse.json({ ok: true, data: rest });
   }
 
   // Either compute fresh or top-up missing runs in parallel
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   const result: DailyResult = {
     date,
-    model: 'private',
+    model: '',
     runCount,
     average: avg,
     median,

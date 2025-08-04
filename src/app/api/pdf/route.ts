@@ -38,7 +38,6 @@ export async function GET(req: NextRequest) {
     medianPct: Math.round(data.median * 1000) / 10,
     stddevPct: Math.round(data.stddev * 1000) / 10,
     runs: data.runCount,
-    model: 'private',
     report: data.medianReport,
     citations: data.medianCitations?.map((c) => `${c.title ? c.title + ' — ' : ''}${c.url}`) || [],
   });
@@ -56,7 +55,6 @@ function generatePdf(opts: {
   medianPct: number;
   stddevPct: number;
   runs: number;
-  model: string;
   report: string;
   citations: string[];
 }): Uint8Array {
@@ -92,7 +90,7 @@ function generatePdf(opts: {
   const maxChars = 90; // rough width
   lines.push(`Daily Travel Risk (U.S. Non-Citizens) — ${opts.date}`);
   lines.push('');
-  lines.push(`Model: ${opts.model} • Runs: ${opts.runs}`);
+  lines.push(`Runs: ${opts.runs}`);
   lines.push(`Average: ${opts.averagePct}% • Median: ${opts.medianPct}% • Std Dev: ${opts.stddevPct}%`);
   lines.push('');
   lines.push('Median Report');
