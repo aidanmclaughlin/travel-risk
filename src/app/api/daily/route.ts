@@ -13,20 +13,21 @@ function toDateStr(d: Date = new Date()): string {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get('day') || toDateStr();
-  const existing = await loadDaily(date);
+  try {
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get('day') || toDateStr();
+    const existing = await loadDaily(date);
   // Keep per-request compute small; allow caller to request more via ?count=
   const requestedCount = Number(searchParams.get('count') || '');
   const desired = Number.isFinite(requestedCount)
     ? Math.max(1, Math.min(25, Math.floor(requestedCount)))
     : Math.max(1, Math.min(25, Number(process.env.DAILY_RUNS || '1')));
 
-  if (existing && existing.runCount >= desired) {
-    const { model: _m, ...rest } = existing;
-    void _m;
-    return NextResponse.json({ ok: true, data: rest });
-  }
+    if (existing && existing.runCount >= desired) {
+      const { model: _m, ...rest } = existing;
+      void _m;
+      return NextResponse.json({ ok: true, data: rest });
+    }
 
   // Either compute fresh or top-up missing runs in parallel
   const baseEstimates = existing?.estimates ?? [];
@@ -81,7 +82,12 @@ export async function GET(req: NextRequest) {
     runsDetailed: allDetails,
   };
 
-  await saveDaily(result);
+    await saveDaily(result);
 
-  return NextResponse.json({ ok: true, data: result });
+    return NextResponse.json({ ok: true, data: result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    // Return structured error for easier diagnosis while keeping 200 to avoid opaque 500s.
+    return NextResponse.json({ ok: false, error: message });
+  }
 }

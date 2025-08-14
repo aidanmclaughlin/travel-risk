@@ -7,8 +7,12 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const DAILY_DIR = path.join(DATA_DIR, 'daily');
 
 function blobEnabled(): boolean {
-  // Vercel Blob SDK uses env tokens automatically when the Blob add-on is attached
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL);
+  // Only enable Blob when tokens are present (READ or READ_WRITE)
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_TOKEN);
+}
+
+function blobToken(): string | undefined {
+  return process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_TOKEN;
 }
 
 async function ensureDir(): Promise<void> {
@@ -25,6 +29,7 @@ export async function saveDaily(result: DailyResult): Promise<void> {
       access: 'public',
       addRandomSuffix: false,
       contentType: 'application/json; charset=utf-8',
+      token: blobToken(),
     });
     return;
   }
@@ -36,7 +41,7 @@ export async function saveDaily(result: DailyResult): Promise<void> {
 export async function loadDaily(date: string): Promise<DailyResult | null> {
   if (blobEnabled()) {
     const key = `daily/${date}.json`;
-    const { blobs } = await list({ prefix: key });
+    const { blobs } = await list({ prefix: key, token: blobToken() });
     const found = blobs.find(b => b.pathname === key) || blobs[0];
     if (!found) return null;
     const res = await fetch(found.url, { cache: 'no-store' });
@@ -60,7 +65,7 @@ export async function loadDaily(date: string): Promise<DailyResult | null> {
 
 export async function listHistory(): Promise<DailyResult[]> {
   if (blobEnabled()) {
-    const { blobs } = await list({ prefix: 'daily/' });
+    const { blobs } = await list({ prefix: 'daily/', token: blobToken() });
     const jsons: DailyResult[] = [];
     for (const b of blobs) {
       // Only include top-level daily files like daily/YYYY-MM-DD.json, skip nested runs
