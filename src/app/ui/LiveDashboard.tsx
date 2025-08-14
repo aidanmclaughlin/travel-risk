@@ -62,7 +62,7 @@ export default function LiveDashboard({
 
   const avgPct = today ? Math.round((today.average || 0) * 1000) / 10 : null;
   const stdPct = today ? Math.round((today.stddev || 0) * 1000) / 10 : null;
-  const runs = today?.runCount ?? null;
+  const runsUsed = (Array.isArray(today?.estimates) ? today!.estimates.length : today?.runCount) ?? null;
   const updatedStr = useMemo(() => {
     if (!today?.computedAt) return null;
     try { return new Date(today.computedAt).toLocaleString(); } catch { return today.computedAt; }
@@ -87,7 +87,8 @@ export default function LiveDashboard({
             )}
           </div>
           <div className="mt-2 text-xs sm:text-sm muted">
-            {updatedStr ? `Updated ${updatedStr}` : ''}{runs != null ? (updatedStr ? ' • ' : '') + `Runs ${runs}` : ''}
+            {updatedStr ? `Updated ${updatedStr}` : ''}
+            {runsUsed != null ? (updatedStr ? ' • ' : '') + `Avg of ${runsUsed} run${runsUsed === 1 ? '' : 's'}` : ''}
           </div>
         </div>
       </div>
