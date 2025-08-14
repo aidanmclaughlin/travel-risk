@@ -4,6 +4,7 @@ import { loadDaily, saveDaily, saveDailyRun } from '@/lib/store';
 import { DailyResult, RunDetail } from '@/lib/types';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60; // avoid timeouts; keep runs small per request
 
 function toDateStr(d: Date = new Date()): string {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
@@ -15,10 +16,11 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('day') || toDateStr();
   const existing = await loadDaily(date);
-  // Always aim for at least 25 runs
+  // Keep per-request compute small; allow caller to request more via ?count=
   const requestedCount = Number(searchParams.get('count') || '');
-  let desired = Number.isFinite(requestedCount) ? Math.max(1, Math.min(25, Math.floor(requestedCount))) : 25;
-  if (desired < 25) desired = 25;
+  const desired = Number.isFinite(requestedCount)
+    ? Math.max(1, Math.min(25, Math.floor(requestedCount)))
+    : Math.max(1, Math.min(25, Number(process.env.DAILY_RUNS || '1')));
 
   if (existing && existing.runCount >= desired) {
     const { model: _m, ...rest } = existing;
