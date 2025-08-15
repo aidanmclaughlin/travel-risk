@@ -2,7 +2,8 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { SingleEstimate } from './types';
 
-const MODEL = process.env.DR_MODEL || 'o3';
+// Project-wide: no fallbacks. Use explicit model (default gpt-5).
+const MODEL = process.env.DR_MODEL || 'gpt-5';
 
 const OutputSchema = z.object({
   probability: z.number().min(0).max(1),

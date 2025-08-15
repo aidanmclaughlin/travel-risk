@@ -21,17 +21,30 @@ export default function LiveDashboard({
 
   useEffect(() => {
     let cancelled = false;
-    const poll = async () => {
+    const fetchWithTimeout = async <T,>(url: string, ms: number): Promise<T> => {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), ms);
       try {
-        const [h, t] = await Promise.all([
-          fetch("/api/history", { cache: "no-store" }).then((r) => r.json()) as Promise<ApiResp<DailyResult[]>>,
-          fetch("/api/daily", { cache: "no-store" }).then((r) => r.json()) as Promise<ApiResp<DailyResult | null>>,
-        ]);
-        if (!cancelled) {
-          if (h?.ok && Array.isArray(h.data)) setHistory(h.data);
-          if (t?.ok) setToday(t.data);
-        }
-      } catch {}
+        const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
+        return (await res.json()) as T;
+      } finally {
+        clearTimeout(id);
+      }
+    };
+
+    const poll = async () => {
+      // Kick off independently so one slow call doesn't block the other
+      fetchWithTimeout<ApiResp<DailyResult[]>>("/api/history", 8000)
+        .then((h) => {
+          if (!cancelled && h?.ok && Array.isArray(h.data)) setHistory(h.data);
+        })
+        .catch(() => {});
+
+      fetchWithTimeout<ApiResp<DailyResult | null>>("/api/daily", 15000)
+        .then((t) => {
+          if (!cancelled && t?.ok) setToday(t.data);
+        })
+        .catch(() => {});
     };
     // initial small delay to allow SSR to paint
     const id = setInterval(poll, 30000);

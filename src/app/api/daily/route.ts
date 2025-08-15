@@ -17,23 +17,30 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const date = searchParams.get('day') || toDateStr();
     const existing = await loadDaily(date);
-  // Keep per-request compute small; allow caller to request more via ?count=
+  // Target total runs and per-request cap for incremental top-ups
   const requestedCount = Number(searchParams.get('count') || '');
-  const desired = Number.isFinite(requestedCount)
-    ? Math.max(1, Math.min(25, Math.floor(requestedCount)))
-    : Math.max(1, Math.min(25, Number(process.env.DAILY_RUNS || '1')));
+  const goal = Number.isFinite(requestedCount)
+    ? Math.max(1, Math.min(50, Math.floor(requestedCount)))
+    : Math.max(1, Math.min(50, Number(process.env.DAILY_TARGET_RUNS || '25')));
+  const perReq = Math.max(1, Math.min(10, Number(searchParams.get('batch') || process.env.DAILY_BATCH || '3')));
 
-    if (existing && existing.runCount >= desired) {
+    if (existing && existing.runCount >= goal) {
       const { model: _m, ...rest } = existing;
       void _m;
       return NextResponse.json({ ok: true, data: rest });
     }
 
-  // Either compute fresh or top-up missing runs in parallel
+  // Either compute fresh or top-up missing runs in a small batch to avoid timeouts
   const baseEstimates = existing?.estimates ?? [];
-  const missing = desired - (existing?.runCount ?? 0);
+  const missing = goal - (existing?.runCount ?? 0);
+  const toRun = Math.max(0, Math.min(perReq, missing));
+  if (toRun <= 0) {
+    const { model: _m, ...rest } = (existing as DailyResult) || ({} as any);
+    void _m;
+    return NextResponse.json({ ok: true, data: rest });
+  }
 
-  const newRuns = await Promise.all(Array.from({ length: missing }, () => deepResearchRisk()));
+  const newRuns = await Promise.all(Array.from({ length: toRun }, () => deepResearchRisk()));
   const estimates = [...baseEstimates, ...newRuns.map((r) => r.probability)];
 
   // Persist each new run as its own artifact and aggregate detailed runs
