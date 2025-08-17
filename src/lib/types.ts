@@ -31,3 +31,7 @@ export type DailyResult = {
   destination?: string | null;
   runsDetailed?: RunDetail[]; // optional: all per-run details
 };
+
+export type ApiResponse<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };

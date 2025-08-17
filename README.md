@@ -1,14 +1,14 @@
 Daily Travel Risk — U.S. to Any Country
 =======================================
 
-A simple, beautiful Vercel app that publishes daily estimated statistics on how risky it is for U.S. non‑citizens to travel to other countries and re‑enter the U.S., given current visa/travel‑policy conditions.
+A small, tasteful Vercel app that publishes a daily probability estimate for the risk that a U.S. non‑citizen traveler re‑entering within 30 days experiences an adverse border outcome (e.g., entry denial). Results are persisted per day, visualized over time, and exportable to PDF.
 
 How it works
 ------------
 
-- For testing, the backend currently performs a single run with the `o3` model to estimate the probability (0–1) of deportation/visa cancellation/entry denial on re‑entry, and returns a short report with optional citations.
-- In production, you can switch back to `o3-deep-research` and multiple runs (e.g., 25) if desired; see code comments and envs.
-- Results are stored per‑day so the homepage can show today’s risk and a historical chart.
+- The backend runs one or more model calls per day — each run produces a probability, a markdown report, and citations. Aggregates (average/median/stddev) are computed from all runs.
+- The app supports incremental top-ups: `/api/daily?count=25&batch=3` will add up to 3 runs per request until 25 total are stored for the day.
+- Results are stored as JSON per day (`daily/YYYY-MM-DD.json`) and individual run artifacts under `daily/YYYY-MM-DD/runs/`.
 
 Important: Deep Research calls can take minutes. For production, schedule a daily background call (Vercel Cron) to pre‑compute results. The UI can also trigger a compute on demand.
 
@@ -18,7 +18,7 @@ Getting started
 1) Prerequisites
 
 - Node.js 18+ (Node 20+ recommended)
-- An OpenAI API key with access to Deep Research models
+- An OpenAI API key
 
 2) Install dependencies
 
@@ -28,14 +28,15 @@ npm install
 
 3) Configure environment
 
-Create a `.env.local` in the project root:
+Create a `.env.local` with at least:
 
 ```
 OPENAI_API_KEY=sk-...
-# Optional: simulate data in development (no API calls)
-SIMULATE_DEEP_RESEARCH=false
-# Optional: choose model (o3 or o3-deep-research)
-DR_MODEL=o3
+# Optional: choose a model. Default: gpt-5
+DR_MODEL=gpt-5
+# Optional: daily top-up defaults
+DAILY_TARGET_RUNS=25
+DAILY_BATCH=3
 ## For persistent storage on Vercel (recommended)
 # Add Vercel Blob to the project (Storage tab) to auto-provision tokens
 # Local dev falls back to ./data directory if Blob tokens are not present
@@ -52,11 +53,9 @@ Then open http://localhost:3000.
 Manual compute
 --------------
 
-No secret required; the API will compute and persist if missing. Examples:
-
-- Browser: `https://your-domain.vercel.app/api/daily`
-- Local dev: `http://localhost:3000/api/daily`
-- Optional: `?day=YYYY-MM-DD` to compute/load for a specific date
+- `GET /api/daily?day=YYYY-MM-DD&count=25&batch=3` — compute/top-up for a day.
+- `GET /api/history` — list history for charts (sanitized: no model name).
+- `GET /api/pdf?day=YYYY-MM-DD` — generate a PDF for the day.
 
 Production and scheduling
 -------------------------
@@ -74,9 +73,8 @@ On Vercel, add `OPENAI_API_KEY` as an Environment Variable. To compute the daily
 Notes on models
 ---------------
 
-- Current testing mode uses `o3` (no tools) for speed and cost.
-- To enable Deep Research, set `DR_MODEL=o3-deep-research` and consider multiple runs; deep research can be slow and expensive.
-- We request a strictly JSON primary output and defensively extract a probability if needed.
+- Default `DR_MODEL` is `gpt-5`. To use a deep-research capable model, set `DR_MODEL` accordingly.
+- `src/lib/openai.ts` enforces strict parsing of the model response and throws on schema violations.
 
 Persistence notes
 -----------------
@@ -94,6 +92,9 @@ Development tips
 PDF export
 ----------
 
-- Download a per‑day PDF (title, summary stats, median report, citations):
-  - /api/pdf?day=YYYY-MM-DD (defaults to today)
-  - The homepage provides a “Download full PDF (median report)” button when a day’s estimate exists.
+- `GET /api/pdf?day=YYYY-MM-DD` returns a minimal PDF containing headline stats and the median report.
+
+For Agents
+----------
+
+See `AGENTS.md` (root) plus guidance in `src/lib/AGENTS.md`, `src/app/api/AGENTS.md`, and `src/app/ui/AGENTS.md` for a quick tour of the codebase and conventions.

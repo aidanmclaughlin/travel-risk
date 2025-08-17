@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "npm run lint && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@vercel/blob": "^0.24.1",
