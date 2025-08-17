@@ -1,5 +1,10 @@
 {
   "crons": [
-    { "path": "/api/daily?count=25", "schedule": "0 9 * * *" }
+    { "path": "/api/daily?count=25&batch=5", "schedule": "0 9 * * *" },
+    { "path": "/api/daily?count=25&batch=5", "schedule": "10 9 * * *" },
+    { "path": "/api/daily?count=25&batch=5", "schedule": "20 9 * * *" },
+    { "path": "/api/daily?count=25&batch=5", "schedule": "30 9 * * *" },
+    { "path": "/api/daily?count=25&batch=5", "schedule": "40 9 * * *" },
+    { "path": "/api/daily?count=25&batch=5", "schedule": "50 9 * * *" }
   ]
 }

@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npm run lint && tsc -p tsconfig.json --noEmit"
+    "test": "npm run lint && tsc -p tsconfig.json --noEmit",
+    "blob:inspect": "node scripts/inspect-blob.mjs",
+    "vercel:whoami": "vercel whoami",
+    "blob:ls": "vercel blob ls daily/"
   },
   "dependencies": {
     "@vercel/blob": "^0.24.1",

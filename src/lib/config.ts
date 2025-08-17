@@ -10,7 +10,7 @@ export function targetRunsFromEnv(): number {
 }
 
 export function batchSizeFromEnv(): number {
-  const raw = Number(process.env.DAILY_BATCH || '3');
+  const raw = Number(process.env.DAILY_BATCH || '5');
   return clamp(Number.isFinite(raw) ? Math.floor(raw) : 3, 1, 10);
 }
 
@@ -27,4 +27,3 @@ export function parseBatchParam(input: string | null): number | null {
   if (!Number.isFinite(n)) return null;
   return clamp(Math.floor(n), 1, 10);
 }
-
