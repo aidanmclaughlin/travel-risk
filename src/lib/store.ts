@@ -103,6 +103,7 @@ export async function saveDailyRun(date: string, index: number, run: RunDetail):
       access: 'public',
       addRandomSuffix: false,
       contentType: 'application/json; charset=utf-8',
+      token: blobToken(),
     });
     return;
   }

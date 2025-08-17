@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ensureDailyWithGoal } from '@/lib/daily';
 import { toDateStrUTC } from '@/lib/date';
 import { batchSizeFromEnv, parseBatchParam, parseCountParam, targetRunsFromEnv } from '@/lib/config';
-import { DailyResult } from '@/lib/types';
+import { stripModel } from '@/lib/sanitize';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // avoid timeouts; keep runs small per request
@@ -16,9 +16,7 @@ export async function GET(req: NextRequest) {
 
     const computed = await ensureDailyWithGoal({ date, goalRuns: goal, perRequestCap: perReq });
     // Sanitize: do not expose model name in API payloads
-    const { model: _m, ...rest } = computed as DailyResult;
-    void _m;
-    return NextResponse.json({ ok: true, data: rest });
+    return NextResponse.json({ ok: true, data: stripModel(computed) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     // Return structured error for easier diagnosis while keeping 200 to avoid opaque 500s.

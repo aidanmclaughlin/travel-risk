@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import HistoryLine from "./HistoryLine";
-import type { DailyResult } from "@/lib/types";
+import type { DailyResult, ApiResponse } from "@/lib/types";
 import Markdown from "./Markdown";
 
-type ApiResp<T> = { ok: boolean; data: T };
+type ApiResp<T> = ApiResponse<T>;
 
 export default function LiveDashboard({
   initialToday,
@@ -75,7 +75,7 @@ export default function LiveDashboard({
 
   const avgPct = today ? Math.round((today.average || 0) * 1000) / 10 : null;
   const stdPct = today ? Math.round((today.stddev || 0) * 1000) / 10 : null;
-  const runsUsed = (Array.isArray(today?.estimates) ? today!.estimates.length : today?.runCount) ?? null;
+  const runsUsed = today?.runCount ?? (Array.isArray(today?.estimates) ? today!.estimates.length : null);
   const updatedStr = useMemo(() => {
     if (!today?.computedAt) return null;
     try { return new Date(today.computedAt).toLocaleString(); } catch { return today.computedAt; }
