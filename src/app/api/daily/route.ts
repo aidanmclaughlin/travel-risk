@@ -35,7 +35,11 @@ export async function GET(req: NextRequest) {
   const missing = goal - (existing?.runCount ?? 0);
   const toRun = Math.max(0, Math.min(perReq, missing));
   if (toRun <= 0) {
-    const { model: _m, ...rest } = (existing as DailyResult) || ({} as any);
+    // If nothing to run, existing must be present and already at/above goal
+    if (!existing) {
+      return NextResponse.json({ ok: false, error: 'No work to run but existing result missing' });
+    }
+    const { model: _m, ...rest } = existing as DailyResult;
     void _m;
     return NextResponse.json({ ok: true, data: rest });
   }
@@ -92,7 +96,7 @@ export async function GET(req: NextRequest) {
     await saveDaily(result);
 
     return NextResponse.json({ ok: true, data: result });
-  } catch (err) {
+  } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     // Return structured error for easier diagnosis while keeping 200 to avoid opaque 500s.
     return NextResponse.json({ ok: false, error: message });

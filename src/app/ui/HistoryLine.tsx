@@ -145,7 +145,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       },
     },
     animation: { duration: 700, easing: 'easeOutQuart' },
-  }), [values, stds]);
+  }), []);
 
   // Custom plugin to draw rounded-rectangle labels for each point
   const labelsPlugin = useMemo<Plugin<'line'>>(() => ({
@@ -242,7 +242,7 @@ export default function HistoryLine({ labels, values, stds }: { labels: string[]
       });
       ctx.restore();
     },
-  }), [values, theme.surface, theme.foreground]);
+  }), [values, stds, theme.surface, theme.foreground, theme.primaryRGB]);
 
   return (
     <Line data={data} options={options} plugins={[labelsPlugin]} style={{ width: '100%', height: '100%' }} />
