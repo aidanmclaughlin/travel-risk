@@ -43,4 +43,7 @@ export type IntradaySample = {
   average: number; // 0..1
   median: number; // 0..1
   runCount: number;
+  // Optional snapshot of the median report at this moment
+  report?: string;
+  citations?: Citation[];
 };

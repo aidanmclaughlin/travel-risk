@@ -65,6 +65,14 @@ Endpoints
 - `GET /api/history` — list daily summaries (sanitized: no model name).
 - `GET /api/pdf?day=YYYY-MM-DD` — generate a minimal PDF for the day.
 
+UI
+--
+
+- The home page renders an intraday line chart of the average (%) over time for the current UTC day.
+- Gridlines and axis tick labels are hidden for a cleaner look.
+- Each point is annotated with a small rounded label: `HH:MM • value%`.
+- Clicking a point opens the snapshot of the median report and citations captured at that moment.
+
 Production and scheduling
 -------------------------
 
@@ -73,7 +81,7 @@ On Vercel, set `OPENAI_API_KEY` and optionally `DR_MODEL`. The app ships with a 
 ```
 {
   "crons": [
-    { "path": "/api/tick?count=25&batch=1", "schedule": "*/10 * * * *" }
+    { "path": "/api/tick?batch=1", "schedule": "*/10 * * * *" }
   ]
 }
 ```

@@ -18,6 +18,7 @@ export default function LiveDashboard({
   const [intraday, setIntraday] = useState<IntradaySample[]>(initialIntraday);
   // background refresh, but no visible indicator
   const [showReport, setShowReport] = useState(false);
+  const [selectedSample, setSelectedSample] = useState<IntradaySample | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +60,7 @@ export default function LiveDashboard({
     return () => window.removeEventListener('keydown', onKey);
   }, [showReport]);
 
-  // Allow opening the report by a downward scroll gesture
+  // Allow opening the report by a downward scroll gesture (shows current daily median)
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       if (!showReport && e.deltaY > 10) setShowReport(true);
@@ -107,7 +108,12 @@ export default function LiveDashboard({
       <div className="relative h-[66vh]">
         <div className="absolute inset-0">
           {/* Intraday series (10-minute cadence) */}
-          <TimeSeriesLine labels={tsLabels} values={tsValues} />
+          <TimeSeriesLine
+            labels={tsLabels}
+            values={tsValues}
+            samples={intraday}
+            onSampleClick={(s) => { setSelectedSample(s); setShowReport(true); }}
+          />
         </div>
         <button
           aria-label="Open report"
@@ -123,17 +129,17 @@ export default function LiveDashboard({
         </button>
       </div>
 
-      {showReport && today?.medianReport && (
+      {showReport && (selectedSample?.report || today?.medianReport) && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowReport(false)} />
           <div className="absolute inset-4 sm:inset-8 md:inset-10 flex items-center justify-center">
             <div className="surface-bg surface-border rounded-2xl shadow-2xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)] w-full max-w-4xl" style={{ color: 'var(--foreground)', maxHeight: '85vh' }}>
               <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'color-mix(in oklab, var(--foreground) 8%, transparent)', borderStyle: 'solid' }}>
-                <h2 className="text-lg font-semibold">Median Report</h2>
+                <h2 className="text-lg font-semibold">{selectedSample ? `Snapshot ${new Date(selectedSample.at).toLocaleString()}` : 'Median Report'}</h2>
                 <div className="flex items-center gap-2">
                   {today?.date && (
                     <a
-                      href={`/api/pdf?day=${today.date}`}
+                      href={`/api/pdf?day=${today?.date || ''}`}
                       aria-label="Download PDF"
                     className="inline-flex items-center justify-center w-8 h-8 rounded-md"
                     style={{ background: 'transparent' }}
@@ -155,12 +161,12 @@ export default function LiveDashboard({
                 </div>
               </div>
               <div className="p-5 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
-                <Markdown content={today.medianReport} />
-                {today.medianCitations?.length ? (
+                <Markdown content={selectedSample?.report || today?.medianReport || ''} />
+                {(selectedSample?.citations?.length ? selectedSample.citations : (today?.medianCitations || []))?.length ? (
                   <div className="pt-4">
                     <div className="muted text-sm pb-1">Citations</div>
                     <ul className="list-disc pl-6 space-y-1">
-                    {today.medianCitations.map((c, i) => (
+                    {(selectedSample?.citations || today?.medianCitations || []).map((c, i) => (
                       <li key={i}>
                         <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
                           {c.title || c.url}

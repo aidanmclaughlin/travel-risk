@@ -8,9 +8,11 @@ import {
   LineElement,
   Tooltip,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
-import { useEffect, useMemo, useState } from "react";
+import { Line, getElementAtEvent } from "react-chartjs-2";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ActiveElement, Chart as ChartInst } from "chart.js";
 import type { ChartOptions } from "chart.js";
+import type { IntradaySample } from "@/lib/types";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip);
 
@@ -26,7 +28,7 @@ function movingAverage(values: number[], window: number): number[] {
   return out;
 }
 
-export default function TimeSeriesLine({ labels, values }: { labels: string[]; values: number[] }) {
+export default function TimeSeriesLine({ labels, values, samples, onSampleClick }: { labels: string[]; values: number[]; samples: IntradaySample[]; onSampleClick?: (s: IntradaySample, idx: number) => void; }) {
   const [theme, setTheme] = useState({
     axis: '#1f2937',
     grid: 'rgba(0,0,0,0.08)',
@@ -59,8 +61,8 @@ export default function TimeSeriesLine({ labels, values }: { labels: string[]; v
         borderColor: theme.primary,
         backgroundColor: 'rgba(0,0,0,0)',
         borderWidth: 2,
-        pointRadius: 1.5,
-        pointHoverRadius: 3,
+        pointRadius: 3,
+        pointHoverRadius: 4,
         tension: 0.25,
       },
       {
@@ -80,13 +82,87 @@ export default function TimeSeriesLine({ labels, values }: { labels: string[]; v
     responsive: true,
     maintainAspectRatio: false,
     layout: { padding: { left: 24, right: 24 } },
-    plugins: { legend: { display: false }, tooltip: { enabled: true } },
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
     scales: {
-      x: { grid: { display: false }, ticks: { color: theme.axis }, border: { display: false } },
-      y: { beginAtZero: true, grid: { color: theme.grid }, ticks: { display: false }, border: { display: false } },
+      x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
+      y: { beginAtZero: true, grid: { display: false }, ticks: { display: false }, border: { display: false } },
     },
     animation: { duration: 600, easing: 'easeOutQuart' },
-  }), [theme.axis, theme.grid]);
+  }), []);
 
-  return <Line data={data} options={options} style={{ width: '100%', height: '100%' }} />;
+  // Plugin to label each point with time and value
+  const labelsPlugin = useMemo(() => ({
+    id: 'roundedPointLabels',
+    afterDatasetsDraw(chart: import('chart.js').Chart<'line'>) {
+      const { ctx } = chart;
+      const dsMeta = chart.getDatasetMeta(0);
+      ctx.save();
+      const fontFamily = getComputedStyle(document.body).fontFamily || 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
+      ctx.font = `600 10px ${fontFamily}`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+
+      const padX = 6;
+      const radius = 6;
+      const offset = 16;
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim() || '#0f172a';
+      const surface = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff';
+      const fill = /^#?[0-9A-Fa-f]{6}$/.test(surface) ? `${surface}E6` : 'rgba(255,255,255,0.9)';
+      const strokeStyle = 'rgba(0,0,0,0.12)';
+
+      function roundRect(x: number, y: number, w: number, h: number, r: number) {
+        const rr = Math.min(r, Math.min(w, h) / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+
+      values.forEach((v, i) => {
+        const elem = dsMeta.data[i];
+        if (!elem) return;
+        const x = elem.x;
+        const y = elem.y;
+        const time = labels[i] ?? '';
+        const label = `${time} • ${v}%`;
+        const metrics = ctx.measureText(label);
+        const w = Math.ceil(metrics.width) + padX * 2;
+        const h = 18;
+        const bx = x - w / 2;
+        let by = y - offset - h;
+        const topBound = chart.chartArea.top + 4;
+        const bottomBound = chart.chartArea.bottom - 4;
+        if (by < topBound) by = y + offset; // flip below
+        if (by + h > bottomBound) by = bottomBound - h;
+
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = strokeStyle;
+        roundRect(bx, by, w, h, radius);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = textColor;
+        ctx.fillText(label, bx + w / 2, by + h / 2 + 0.5);
+      });
+      ctx.restore();
+    },
+  }), [labels, values]);
+  const chartRef = useRef<ChartInst<'line'> | null>(null);
+  const captureRef = (instance: unknown) => {
+    chartRef.current = instance as ChartInst<'line'> | null;
+  };
+  const onCanvasClick = (evt: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onSampleClick) return;
+    const chart = chartRef.current;
+    if (!chart) return;
+    const elements: ActiveElement[] = getElementAtEvent(chart, evt);
+    if (!elements || !elements.length) return;
+    const idx = elements[0].index;
+    const s = samples[idx];
+    if (s) onSampleClick(s, idx);
+  };
+
+  return <Line ref={captureRef} data={data} options={options} plugins={[labelsPlugin]} onClick={onCanvasClick} style={{ width: '100%', height: '100%' }} />;
 }

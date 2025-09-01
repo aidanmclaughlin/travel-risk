@@ -10,8 +10,9 @@ export async function recordIntradayFromDaily(d: DailyResult): Promise<IntradayS
     average: d.average,
     median: d.median,
     runCount: d.runCount,
+    report: d.medianReport,
+    citations: d.medianCitations,
   };
   await saveIntradaySample(sample);
   return sample;
 }
-
