@@ -6,51 +6,64 @@ import { DailyResult, RunDetail } from './types';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DAILY_DIR = path.join(DATA_DIR, 'daily');
 
-function blobEnabled(): boolean {
-  // Only enable Blob when tokens are present (READ or READ_WRITE)
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_TOKEN);
-}
-
+// Prefer Vercel Blob in production. Tokens are optional on Vercel because the
+// platform injects scoped credentials automatically; locally, tokens are needed.
 function blobToken(): string | undefined {
   return process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_TOKEN;
 }
 
+async function tryBlobPut(key: string, body: string, contentType: string): Promise<boolean> {
+  try {
+    await put(key, body, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType,
+      // Passing token is optional on Vercel; required locally if you have one.
+      token: blobToken(),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function tryBlobList(prefix: string) {
+  try {
+    return await list({ prefix, token: blobToken() });
+  } catch {
+    return null;
+  }
+}
+
 async function ensureDir(): Promise<void> {
-  if (blobEnabled()) return;
+  // Only used for local fallback
   try {
     await fs.mkdir(DAILY_DIR, { recursive: true });
   } catch {}
 }
 
 export async function saveDaily(result: DailyResult): Promise<void> {
-  if (blobEnabled()) {
-    const key = `daily/${result.date}.json`;
-    await put(key, JSON.stringify(result, null, 2), {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: 'application/json; charset=utf-8',
-      token: blobToken(),
-    });
-    return;
-  }
+  // Try Blob first; if it fails (e.g., no tokens in local dev), write to disk.
+  const key = `daily/${result.date}.json`;
+  const ok = await tryBlobPut(key, JSON.stringify(result, null, 2), 'application/json; charset=utf-8');
+  if (ok) return;
   await ensureDir();
   const file = path.join(DAILY_DIR, `${result.date}.json`);
   await fs.writeFile(file, JSON.stringify(result, null, 2), 'utf8');
 }
 
 export async function loadDaily(date: string): Promise<DailyResult | null> {
-  if (blobEnabled()) {
-    const key = `daily/${date}.json`;
-    const { blobs } = await list({ prefix: key, token: blobToken() });
+  // Prefer Blob; gracefully fall back to local if unavailable.
+  const key = `daily/${date}.json`;
+  const listed = await tryBlobList(key);
+  if (listed) {
+    const { blobs } = listed;
     const found = blobs.find(b => b.pathname === key) || blobs[0];
-    if (!found) return null;
-    const res = await fetch(found.url, { cache: 'no-store' });
-    if (!res.ok) return null;
-    try {
-      const json = await res.json();
-      return json as DailyResult;
-    } catch {
-      return null;
+    if (found) {
+      const res = await fetch(found.url, { cache: 'no-store' });
+      if (res.ok) {
+        try { return (await res.json()) as DailyResult; } catch {}
+      }
     }
   }
   await ensureDir();
@@ -64,8 +77,10 @@ export async function loadDaily(date: string): Promise<DailyResult | null> {
 }
 
 export async function listHistory(): Promise<DailyResult[]> {
-  if (blobEnabled()) {
-    const { blobs } = await list({ prefix: 'daily/', token: blobToken() });
+  // Try Blob first
+  const listed = await tryBlobList('daily/');
+  if (listed) {
+    const { blobs } = listed;
     const jsons: DailyResult[] = [];
     for (const b of blobs) {
       // Only include top-level daily files like daily/YYYY-MM-DD.json, skip nested runs
@@ -97,16 +112,9 @@ export async function listHistory(): Promise<DailyResult[]> {
 }
 
 export async function saveDailyRun(date: string, index: number, run: RunDetail): Promise<void> {
-  if (blobEnabled()) {
-    const key = `daily/${date}/runs/${String(index).padStart(3, '0')}.json`;
-    await put(key, JSON.stringify(run, null, 2), {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: 'application/json; charset=utf-8',
-      token: blobToken(),
-    });
-    return;
-  }
+  const key = `daily/${date}/runs/${String(index).padStart(3, '0')}.json`;
+  const ok = await tryBlobPut(key, JSON.stringify(run, null, 2), 'application/json; charset=utf-8');
+  if (ok) return;
   await ensureDir();
   const runDir = path.join(DAILY_DIR, date, 'runs');
   try { await fs.mkdir(runDir, { recursive: true }); } catch {}
