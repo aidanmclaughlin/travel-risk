@@ -10,6 +10,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { useEffect, useMemo, useState } from "react";
+import type { ChartOptions } from "chart.js";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip);
 
@@ -75,7 +76,7 @@ export default function TimeSeriesLine({ labels, values }: { labels: string[]; v
     ],
   }), [labels, values, smoothed, theme.primary]);
 
-  const options = useMemo(() => ({
+  const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
     maintainAspectRatio: false,
     layout: { padding: { left: 24, right: 24 } },
@@ -89,4 +90,3 @@ export default function TimeSeriesLine({ labels, values }: { labels: string[]; v
 
   return <Line data={data} options={options} style={{ width: '100%', height: '100%' }} />;
 }
-

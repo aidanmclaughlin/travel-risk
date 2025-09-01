@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import HistoryLine from "./HistoryLine";
 import TimeSeriesLine from "./TimeSeriesLine";
 import type { DailyResult, ApiResponse, IntradaySample } from "@/lib/types";
 import Markdown from "./Markdown";
@@ -78,10 +77,6 @@ export default function LiveDashboard({
     window.addEventListener('wheel', onWheel, { passive: true });
     return () => window.removeEventListener('wheel', onWheel);
   }, [showReport]);
-
-  const labels = useMemo(() => history.map((h) => h.date), [history]);
-  const values = useMemo(() => history.map((h) => Math.round(h.average * 1000) / 10), [history]);
-  const stds = useMemo(() => history.map((h) => Math.round(h.stddev * 1000) / 10), [history]);
 
   const tsLabels = useMemo(() => intraday.map((s) => new Date(s.at).toISOString().slice(11,16)), [intraday]);
   const tsValues = useMemo(() => intraday.map((s) => Math.round(s.average * 1000) / 10), [intraday]);
