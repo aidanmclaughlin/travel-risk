@@ -66,7 +66,7 @@ export default function TimeSeriesLine({ labels, values }: { labels: string[]; v
       {
         label: 'Smoothed',
         data: smoothed,
-        borderColor: 'color-mix(in oklab, var(--accent) 90%, transparent)',
+        borderColor: 'rgba(167,139,250,0.95)', // static accent-like color for canvas
         borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 0,

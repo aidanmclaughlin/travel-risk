@@ -9,15 +9,12 @@ type ApiResp<T> = ApiResponse<T>;
 
 export default function LiveDashboard({
   initialToday,
-  initialHistory,
   initialIntraday,
 }: {
   initialToday: DailyResult | null;
-  initialHistory: DailyResult[];
   initialIntraday: IntradaySample[];
 }) {
   const [today, setToday] = useState<DailyResult | null>(initialToday);
-  const [history, setHistory] = useState<DailyResult[]>(initialHistory);
   const [intraday, setIntraday] = useState<IntradaySample[]>(initialIntraday);
   // background refresh, but no visible indicator
   const [showReport, setShowReport] = useState(false);
@@ -36,13 +33,6 @@ export default function LiveDashboard({
     };
 
     const poll = async () => {
-      // Kick off independently so one slow call doesn't block the other
-      fetchWithTimeout<ApiResp<DailyResult[]>>("/api/history", 8000)
-        .then((h) => {
-          if (!cancelled && h?.ok && Array.isArray(h.data)) setHistory(h.data);
-        })
-        .catch(() => {});
-
       fetchWithTimeout<ApiResp<DailyResult | null>>("/api/daily", 15000)
         .then((t) => {
           if (!cancelled && t?.ok) setToday(t.data);
