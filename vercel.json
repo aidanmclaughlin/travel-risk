@@ -1,5 +1,5 @@
 {
   "crons": [
-    { "path": "/api/tick?count=25&batch=1", "schedule": "*/10 * * * *" }
+    { "path": "/api/tick?batch=1", "schedule": "*/10 * * * *" }
   ]
 }

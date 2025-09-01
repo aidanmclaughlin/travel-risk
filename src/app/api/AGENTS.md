@@ -1,8 +1,8 @@
 API — Agent Guide
 
 Endpoints
-- `GET /api/tick` — Compute/top‑up and record a 10‑minute intraday sample.
-  - Query: `day=YYYY-MM-DD` (default today UTC), `count=1..50` (goal), `batch=1..10` (per‑request cap; keep small).
+- `GET /api/tick` — Append `batch` runs and record a 10‑minute intraday sample.
+  - Query: `day=YYYY-MM-DD` (default today UTC), `batch=1..10` (per‑request cap; keep small).
   - Returns: `{ ok: true, data: { daily: DailyResultSansModel, sample: IntradaySample } }`.
 - `GET /api/intraday` — List intraday samples for a day.
   - Query: `day=YYYY-MM-DD` (default today UTC).

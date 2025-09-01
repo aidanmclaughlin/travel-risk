@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureDailyWithGoal } from '@/lib/daily';
+import { appendRuns } from '@/lib/daily';
 import { toDateStrUTC } from '@/lib/date';
-import { batchSizeFromEnv, parseBatchParam, parseCountParam, targetRunsFromEnv } from '@/lib/config';
+import { batchSizeFromEnv, parseBatchParam } from '@/lib/config';
 import { recordIntradayFromDaily } from '@/lib/intraday';
 import { stripModel } from '@/lib/sanitize';
 
@@ -12,10 +12,9 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const date = searchParams.get('day') || toDateStrUTC();
-    const goal = parseCountParam(searchParams.get('count')) ?? targetRunsFromEnv();
+    // Always append `batch` runs per tick; ignore any daily cap.
     const perReq = parseBatchParam(searchParams.get('batch')) ?? batchSizeFromEnv();
-
-    const daily = await ensureDailyWithGoal({ date, goalRuns: goal, perRequestCap: perReq });
+    const daily = await appendRuns(date, perReq);
     const sample = await recordIntradayFromDaily(daily);
     return NextResponse.json({ ok: true, data: { daily: stripModel(daily), sample } });
   } catch (err: unknown) {
@@ -23,4 +22,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message });
   }
 }
-

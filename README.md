@@ -59,7 +59,7 @@ Then open http://localhost:3000.
 Endpoints
 ---------
 
-- `GET /api/tick?count=25&batch=1` — single “tick”: compute up to `batch` new runs for today (or `day=`) and record an intraday sample.
+- `GET /api/tick?batch=1` — single “tick”: append up to `batch` new runs for today (or `day=`) regardless of any daily cap, then record an intraday sample.
 - `GET /api/intraday?day=YYYY-MM-DD` — list intraday samples for a day.
 - `GET /api/daily?day=YYYY-MM-DD&count&batch` — compute/top‑up for a day and return the (sanitized) daily summary.
 - `GET /api/history` — list daily summaries (sanitized: no model name).
