@@ -1,5 +1,5 @@
 import { deepResearchRisk } from './openai';
-import { loadDaily, saveDaily, saveDailyRun } from './store';
+import { loadDaily, saveDaily, saveDailyRun, listRunDetails } from './store';
 import { DailyResult, RunDetail } from './types';
 import { calcStats, pickNearestToMedian } from './stats';
 
@@ -11,9 +11,10 @@ export type EnsureParams = {
 
 export async function ensureDailyWithGoal({ date, goalRuns, perRequestCap }: EnsureParams): Promise<DailyResult> {
   const existing = await loadDaily(date);
-  const baseEstimates = existing?.estimates ?? [];
-  const existingDetails: RunDetail[] = (existing as DailyResult | undefined)?.runsDetailed ?? [];
-  const missing = goalRuns - (existing?.runCount ?? 0);
+  // Treat stored run artifacts as the source of truth; this also repairs prior partial writes.
+  const existingDetails: RunDetail[] = await listRunDetails(date);
+  const baseEstimates = existingDetails.map(r => r.probability);
+  const missing = goalRuns - baseEstimates.length;
   const toRun = Math.max(0, Math.min(perRequestCap, missing));
 
   // If no work to do and we have existing, return existing
@@ -21,21 +22,23 @@ export async function ensureDailyWithGoal({ date, goalRuns, perRequestCap }: Ens
     return existing as DailyResult;
   }
 
-  // Compute additional runs
-  const newRuns = await Promise.all(Array.from({ length: toRun }, () => deepResearchRisk()));
-  const newDetails: RunDetail[] = newRuns.map((r) => ({
-    probability: r.probability,
-    report: r.report,
-    citations: r.citations,
-    computedAt: new Date().toISOString(),
-  }));
+  // Compute additional runs sequentially and persist after each to survive timeouts
+  const allDetails: RunDetail[] = [...existingDetails];
+  let offset = existingDetails.length;
+  for (let i = 0; i < toRun; i++) {
+    const r = await deepResearchRisk();
+    const run: RunDetail = {
+      probability: r.probability,
+      report: r.report,
+      citations: r.citations,
+      computedAt: new Date().toISOString(),
+    };
+    await saveDailyRun(date, offset, run);
+    allDetails.push(run);
+    offset += 1;
+  }
 
-  // Persist each run artifact
-  const offset = existing?.runCount ?? 0;
-  await Promise.all(newDetails.map((run, i) => saveDailyRun(date, offset + i, run)));
-
-  const allDetails: RunDetail[] = [...existingDetails, ...newDetails];
-  const estimates = [...baseEstimates, ...newDetails.map((r) => r.probability)];
+  const estimates = allDetails.map(r => r.probability);
   const runCount = estimates.length;
   const { average, median, stddev } = calcStats(estimates);
 
@@ -43,7 +46,7 @@ export async function ensureDailyWithGoal({ date, goalRuns, perRequestCap }: Ens
 
   const result: DailyResult = {
     date,
-    model: existing?.model ?? '',
+    model: existing?.model ?? (process.env.DR_MODEL || ''),
     runCount,
     average,
     median,
@@ -59,4 +62,3 @@ export async function ensureDailyWithGoal({ date, goalRuns, perRequestCap }: Ens
   await saveDaily(result);
   return result;
 }
-
