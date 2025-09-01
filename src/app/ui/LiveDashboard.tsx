@@ -124,16 +124,27 @@ export default function LiveDashboard({
             <svg className="animate-bounce-slow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
-            <span className="mt-0.5">Open report</span>
+            <span className="mt-0.5">Show latest report</span>
           </div>
         </button>
       </div>
 
       {showReport && (selectedSample?.report || today?.medianReport) && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowReport(false)} />
+        <div
+          className="fixed inset-0 z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) { setShowReport(false); setSelectedSample(null); }
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="absolute inset-0 bg-black/40" />
           <div className="absolute inset-4 sm:inset-8 md:inset-10 flex items-center justify-center">
-            <div className="surface-bg surface-border rounded-2xl shadow-2xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)] w-full max-w-4xl" style={{ color: 'var(--foreground)', maxHeight: '85vh' }}>
+            <div
+              className="surface-bg surface-border rounded-2xl shadow-2xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)] w-full max-w-4xl"
+              style={{ color: 'var(--foreground)', maxHeight: '85vh' }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'color-mix(in oklab, var(--foreground) 8%, transparent)', borderStyle: 'solid' }}>
                 <h2 className="text-lg font-semibold">{selectedSample ? `Snapshot ${new Date(selectedSample.at).toLocaleString()}` : 'Median Report'}</h2>
                 <div className="flex items-center gap-2">

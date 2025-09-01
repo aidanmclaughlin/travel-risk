@@ -81,7 +81,8 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
   const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    layout: { padding: { left: 24, right: 24 } },
+    // Extra horizontal padding to prevent point labels from clipping at edges
+    layout: { padding: { left: 48, right: 48 } },
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
     scales: {
       x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
@@ -131,12 +132,17 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
         const metrics = ctx.measureText(label);
         const w = Math.ceil(metrics.width) + padX * 2;
         const h = 18;
-        const bx = x - w / 2;
+        let bx = x - w / 2;
         let by = y - offset - h;
-        const topBound = chart.chartArea.top + 4;
-        const bottomBound = chart.chartArea.bottom - 4;
+        const ca = chart.chartArea;
+        const topBound = ca.top + 4;
+        const bottomBound = ca.bottom - 4;
+        const leftBound = ca.left + 4;
+        const rightBound = ca.right - 4;
         if (by < topBound) by = y + offset; // flip below
         if (by + h > bottomBound) by = bottomBound - h;
+        if (bx < leftBound) bx = leftBound;
+        if (bx + w > rightBound) bx = rightBound - w;
 
         ctx.fillStyle = fill;
         ctx.strokeStyle = strokeStyle;
