@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import HistoryLine from "./HistoryLine";
-import type { DailyResult, ApiResponse } from "@/lib/types";
+import TimeSeriesLine from "./TimeSeriesLine";
+import type { DailyResult, ApiResponse, IntradaySample } from "@/lib/types";
 import Markdown from "./Markdown";
 
 type ApiResp<T> = ApiResponse<T>;
@@ -10,12 +11,15 @@ type ApiResp<T> = ApiResponse<T>;
 export default function LiveDashboard({
   initialToday,
   initialHistory,
+  initialIntraday,
 }: {
   initialToday: DailyResult | null;
   initialHistory: DailyResult[];
+  initialIntraday: IntradaySample[];
 }) {
   const [today, setToday] = useState<DailyResult | null>(initialToday);
   const [history, setHistory] = useState<DailyResult[]>(initialHistory);
+  const [intraday, setIntraday] = useState<IntradaySample[]>(initialIntraday);
   // background refresh, but no visible indicator
   const [showReport, setShowReport] = useState(false);
 
@@ -45,6 +49,12 @@ export default function LiveDashboard({
           if (!cancelled && t?.ok) setToday(t.data);
         })
         .catch(() => {});
+
+      fetchWithTimeout<ApiResp<IntradaySample[]>>("/api/intraday", 8000)
+        .then((s) => {
+          if (!cancelled && s?.ok && Array.isArray(s.data)) setIntraday(s.data);
+        })
+        .catch(() => {});
     };
     // initial small delay to allow SSR to paint
     const id = setInterval(poll, 30000);
@@ -72,6 +82,9 @@ export default function LiveDashboard({
   const labels = useMemo(() => history.map((h) => h.date), [history]);
   const values = useMemo(() => history.map((h) => Math.round(h.average * 1000) / 10), [history]);
   const stds = useMemo(() => history.map((h) => Math.round(h.stddev * 1000) / 10), [history]);
+
+  const tsLabels = useMemo(() => intraday.map((s) => new Date(s.at).toISOString().slice(11,16)), [intraday]);
+  const tsValues = useMemo(() => intraday.map((s) => Math.round(s.average * 1000) / 10), [intraday]);
 
   const avgPct = today ? Math.round((today.average || 0) * 1000) / 10 : null;
   const stdPct = today ? Math.round((today.stddev || 0) * 1000) / 10 : null;
@@ -108,7 +121,8 @@ export default function LiveDashboard({
 
       <div className="relative h-[66vh]">
         <div className="absolute inset-0">
-          <HistoryLine labels={labels} values={values} stds={stds} />
+          {/* Intraday series (10-minute cadence) */}
+          <TimeSeriesLine labels={tsLabels} values={tsValues} />
         </div>
         <button
           aria-label="Open report"

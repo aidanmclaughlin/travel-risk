@@ -1,4 +1,4 @@
-import { listHistory, loadDaily } from "@/lib/store";
+import { listHistory, loadDaily, listIntraday } from "@/lib/store";
 import LiveDashboard from "./ui/LiveDashboard";
 import { toDateStrUTC } from "@/lib/date";
 
@@ -11,6 +11,7 @@ export default async function Home() {
   const todayStr = toDateStrUTC();
   const today = await loadDaily(todayStr);
   const history = await listHistory();
+  const intraday = await listIntraday(todayStr);
 
-  return <LiveDashboard initialToday={today || null} initialHistory={history} />;
+  return <LiveDashboard initialToday={today || null} initialHistory={history} initialIntraday={intraday} />;
 }

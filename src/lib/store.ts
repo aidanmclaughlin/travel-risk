@@ -1,11 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { put, list } from '@vercel/blob';
-import { DailyResult, RunDetail } from './types';
+import { DailyResult, RunDetail, IntradaySample } from './types';
 import { calcStats, pickNearestToMedian } from './stats';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DAILY_DIR = path.join(DATA_DIR, 'daily');
+const INTRADAY_DIR = path.join(DATA_DIR, 'intraday');
 
 // Prefer Vercel Blob in production. Tokens are optional on Vercel because the
 // platform injects scoped credentials automatically; locally, tokens are needed.
@@ -40,6 +41,7 @@ async function ensureDir(): Promise<void> {
   // Only used for local fallback
   try {
     await fs.mkdir(DAILY_DIR, { recursive: true });
+    await fs.mkdir(INTRADAY_DIR, { recursive: true });
   } catch {}
 }
 
@@ -183,4 +185,48 @@ async function reconstructFromRuns(date: string): Promise<DailyResult | null> {
   };
   await saveDaily(result);
   return result;
+}
+
+// ---------- Intraday (10-minute) samples ----------
+
+export async function saveIntradaySample(sample: IntradaySample): Promise<void> {
+  const d = sample.date;
+  const at = new Date(sample.at);
+  const hh = String(at.getUTCHours()).padStart(2, '0');
+  const mm = String(at.getUTCMinutes()).padStart(2, '0');
+  const key = `intraday/${d}/${hh}${mm}.json`;
+  const ok = await tryBlobPut(key, JSON.stringify(sample, null, 2), 'application/json; charset=utf-8');
+  if (ok) return;
+  await ensureDir();
+  const dir = path.join(INTRADAY_DIR, d);
+  try { await fs.mkdir(dir, { recursive: true }); } catch {}
+  const file = path.join(dir, `${hh}${mm}.json`);
+  await fs.writeFile(file, JSON.stringify(sample, null, 2), 'utf8');
+}
+
+export async function listIntraday(date: string): Promise<IntradaySample[]> {
+  const prefix = `intraday/${date}/`;
+  const listed = await tryBlobList(prefix);
+  const out: IntradaySample[] = [];
+  if (listed) {
+    const { blobs } = listed;
+    const files = blobs
+      .filter(b => b.pathname.startsWith(prefix) && b.pathname.endsWith('.json'))
+      .sort((a, b) => a.pathname.localeCompare(b.pathname));
+    for (const f of files) {
+      const res = await fetch(f.url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      try { out.push(await res.json() as IntradaySample); } catch {}
+    }
+    return out;
+  }
+  await ensureDir();
+  try {
+    const dir = path.join(INTRADAY_DIR, date);
+    const files = (await fs.readdir(dir)).filter(f => f.endsWith('.json')).sort();
+    for (const f of files) {
+      try { const raw = await fs.readFile(path.join(dir, f), 'utf8'); out.push(JSON.parse(raw) as IntradaySample); } catch {}
+    }
+  } catch {}
+  return out;
 }

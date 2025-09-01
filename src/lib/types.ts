@@ -35,3 +35,12 @@ export type DailyResult = {
 export type ApiResponse<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
+
+// Intraday time series sample (10-minute cadence)
+export type IntradaySample = {
+  date: string; // YYYY-MM-DD (UTC)
+  at: string; // ISO timestamp for sample moment (UTC)
+  average: number; // 0..1
+  median: number; // 0..1
+  runCount: number;
+};
