@@ -5,7 +5,8 @@ import { batchSizeFromEnv, parseBatchParam, parseCountParam, targetRunsFromEnv }
 import { stripModel } from '@/lib/sanitize';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60; // avoid timeouts; keep runs small per request
+// Deep-research runs are slow; allow up to 300s per invocation.
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   try {
