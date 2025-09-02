@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Danger: Deletes all blobs under a prefix (default: daily/)
+// Danger: Deletes all blobs under a prefix (default: intraday/)
 // Usage: BLOB_READ_WRITE_TOKEN=... node scripts/clear-blob.mjs [prefix]
 
 import { list, del } from '@vercel/blob';
@@ -10,9 +10,9 @@ if (!token) {
   process.exit(1);
 }
 
-const prefix = process.argv[2] || 'daily/';
+const prefix = process.argv[2] || 'intraday/';
 if (!prefix || prefix === '/') {
-  console.error('Refusing to clear without a safe prefix. Pass something like "daily/"');
+  console.error('Refusing to clear without a safe prefix. Pass something like "intraday/"');
   process.exit(1);
 }
 
@@ -33,4 +33,3 @@ async function main() {
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });
-

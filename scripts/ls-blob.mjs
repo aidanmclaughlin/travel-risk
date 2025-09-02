@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// List all blob pathnames under a prefix (default: daily/)
+// List all blob pathnames under a prefix (default: intraday/)
 // Usage: BLOB_READ_TOKEN=... node scripts/ls-blob.mjs [prefix]
 
 import { list } from '@vercel/blob';
@@ -10,7 +10,7 @@ if (!token) {
   process.exit(1);
 }
 
-const prefix = process.argv[2] || 'daily/';
+const prefix = process.argv[2] || 'intraday/';
 
 async function main() {
   let cursor;
@@ -27,4 +27,3 @@ async function main() {
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });
-

@@ -17,17 +17,6 @@ export type RunDetail = {
   model?: string;
 };
 
-// A single-run snapshot for a given UTC day. No averaging or multi-run fields.
-export type DailyResult = {
-  date: string; // YYYY-MM-DD
-  model: string;
-  probability: number; // 0..1
-  report: string;
-  citations: Citation[];
-  computedAt: string; // ISO timestamp
-  destination?: string | null;
-};
-
 export type ApiResponse<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };

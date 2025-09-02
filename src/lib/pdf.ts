@@ -1,11 +1,8 @@
-import { DailyResult } from './types';
+import { IntradaySample } from './types';
 
-export type DailyPdfOptions = {
-  // If provided, overrides computed percentage from DailyResult
-  probabilityPct?: number;
-};
+export type DailyPdfOptions = { probabilityPct?: number };
 
-export function generateDailyPdf(result: DailyResult, opts: DailyPdfOptions = {}): Uint8Array {
+export function generateDailyPdf(result: IntradaySample, opts: DailyPdfOptions = {}): Uint8Array {
   const width = 612; // 8.5in
   const height = 792; // 11in
   const margin = 50;
@@ -13,7 +10,7 @@ export function generateDailyPdf(result: DailyResult, opts: DailyPdfOptions = {}
   const fontSizeBody = 12;
   const leading = 16;
 
-  const probPct = opts.probabilityPct ?? Math.round(result.probability * 1000) / 10;
+  const probPct = opts.probabilityPct ?? Math.round((result.probability || 0) * 1000) / 10;
 
   function escapePdfText(s: string): string {
     return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
@@ -38,20 +35,20 @@ export function generateDailyPdf(result: DailyResult, opts: DailyPdfOptions = {}
 
   const lines: string[] = [];
   const maxChars = 90; // rough width
-  lines.push(`Daily Travel Risk (U.S. Non-Citizens) — ${result.date}`);
+  lines.push(`Travel Risk Snapshot (U.S. Non-Citizens) — ${result.date} @ ${new Date(result.at).toISOString().slice(11,16)} UTC`);
   lines.push('');
   lines.push(`Probability: ${probPct}%`);
   lines.push('');
   lines.push('Report');
   lines.push('');
-  for (const l of (result.report || '').split(/\n+/)) {
+  for (const l of ((result.report || '') as string).split(/\n+/)) {
     for (const w of wrapText(l, maxChars)) lines.push(w);
   }
-  if (result.citations?.length) {
+  if ((result.citations || []).length) {
     lines.push('');
     lines.push('Citations');
     lines.push('');
-    for (const c of result.citations) {
+    for (const c of result.citations || []) {
       const label = `${c.title ? c.title + ' — ' : ''}${c.url}`;
       for (const w of wrapText('- ' + label, maxChars)) lines.push(w);
     }

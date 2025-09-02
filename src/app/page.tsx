@@ -1,4 +1,4 @@
-import { loadDaily, listIntraday } from "@/lib/store";
+import { listIntraday } from "@/lib/store";
 import LiveDashboard from "./ui/LiveDashboard";
 import { toDateStrUTC } from "@/lib/date";
 
@@ -9,8 +9,7 @@ export const revalidate = 0;
 
 export default async function Home() {
   const todayStr = toDateStrUTC();
-  const today = await loadDaily(todayStr);
   const intraday = await listIntraday(todayStr);
-
-  return <LiveDashboard initialToday={today || null} initialIntraday={intraday} />;
+  const latest = intraday.length ? intraday[intraday.length - 1] : null;
+  return <LiveDashboard initialLatest={latest} initialIntraday={intraday} />;
 }

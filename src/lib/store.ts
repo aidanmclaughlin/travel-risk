@@ -1,10 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { put, list } from '@vercel/blob';
-import { DailyResult, IntradaySample } from './types';
+import { IntradaySample } from './types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
-const DAILY_DIR = path.join(DATA_DIR, 'daily');
 const INTRADAY_DIR = path.join(DATA_DIR, 'intraday');
 
 // Prefer Vercel Blob in production. Tokens are optional on Vercel because the
@@ -39,78 +38,8 @@ async function tryBlobList(prefix: string) {
 async function ensureDir(): Promise<void> {
   // Only used for local fallback
   try {
-    await fs.mkdir(DAILY_DIR, { recursive: true });
     await fs.mkdir(INTRADAY_DIR, { recursive: true });
   } catch {}
-}
-
-export async function saveDaily(result: DailyResult): Promise<void> {
-  // Try Blob first; if it fails (e.g., no tokens in local dev), write to disk.
-  const key = `daily/${result.date}.json`;
-  const ok = await tryBlobPut(key, JSON.stringify(result, null, 2), 'application/json; charset=utf-8');
-  if (ok) return;
-  await ensureDir();
-  const file = path.join(DAILY_DIR, `${result.date}.json`);
-  await fs.writeFile(file, JSON.stringify(result, null, 2), 'utf8');
-}
-
-export async function loadDaily(date: string): Promise<DailyResult | null> {
-  // Prefer Blob; gracefully fall back to local if unavailable.
-  const key = `daily/${date}.json`;
-  const listed = await tryBlobList(key);
-  if (listed) {
-    const { blobs } = listed;
-    const found = blobs.find(b => b.pathname === key) || blobs[0];
-    if (found) {
-      const res = await fetch(found.url, { cache: 'no-store' });
-      if (res.ok) {
-        try { return (await res.json()) as DailyResult; } catch {}
-      }
-    }
-  }
-  await ensureDir();
-  const file = path.join(DAILY_DIR, `${date}.json`);
-  try {
-    const raw = await fs.readFile(file, 'utf8');
-    return JSON.parse(raw) as DailyResult;
-  } catch {
-    return null;
-  }
-}
-
-export async function listHistory(): Promise<DailyResult[]> {
-  // Try Blob first
-  const listed = await tryBlobList('daily/');
-  if (listed) {
-    const { blobs } = listed;
-    const jsons: DailyResult[] = [];
-    for (const b of blobs) {
-      // Only include top-level daily files like daily/YYYY-MM-DD.json, skip nested runs
-      if (!b.pathname.endsWith('.json')) continue;
-      const parts = b.pathname.split('/');
-      if (parts.length !== 2) continue; // skip anything under subdirectories (e.g., runs)
-      const res = await fetch(b.url, { cache: 'no-store' });
-      if (!res.ok) continue;
-      try {
-        const j = await res.json();
-        if (j && typeof j.date === 'string') jsons.push(j as DailyResult);
-      } catch {}
-    }
-    jsons.sort((a, b) => a.date.localeCompare(b.date));
-    return jsons;
-  }
-  await ensureDir();
-  const files = await fs.readdir(DAILY_DIR);
-  const results: DailyResult[] = [];
-  for (const f of files) {
-    if (!f.endsWith('.json')) continue;
-    try {
-      const raw = await fs.readFile(path.join(DAILY_DIR, f), 'utf8');
-      results.push(JSON.parse(raw) as DailyResult);
-    } catch {}
-  }
-  results.sort((a, b) => a.date.localeCompare(b.date));
-  return results;
 }
 
 

@@ -2,20 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import TimeSeriesLine from "./TimeSeriesLine";
-import type { DailyResult, ApiResponse, IntradaySample } from "@/lib/types";
+import type { ApiResponse, IntradaySample } from "@/lib/types";
 import Markdown from "./Markdown";
 
 type ApiResp<T> = ApiResponse<T>;
 
 export default function LiveDashboard({
-  initialToday,
+  initialLatest,
   initialIntraday,
 }: {
-  initialToday: DailyResult | null;
+  initialLatest: IntradaySample | null;
   initialIntraday: IntradaySample[];
 }) {
-  const [today, setToday] = useState<DailyResult | null>(initialToday);
   const [intraday, setIntraday] = useState<IntradaySample[]>(initialIntraday);
+  const [latest, setLatest] = useState<IntradaySample | null>(initialLatest);
   // background refresh, but no visible indicator
   const [showReport, setShowReport] = useState(false);
   const [selectedSample, setSelectedSample] = useState<IntradaySample | null>(null);
@@ -34,15 +34,12 @@ export default function LiveDashboard({
     };
 
     const poll = async () => {
-      fetchWithTimeout<ApiResp<DailyResult | null>>("/api/daily", 15000)
-        .then((t) => {
-          if (!cancelled && t?.ok) setToday(t.data);
-        })
-        .catch(() => {});
-
       fetchWithTimeout<ApiResp<IntradaySample[]>>("/api/intraday", 8000)
         .then((s) => {
-          if (!cancelled && s?.ok && Array.isArray(s.data)) setIntraday(s.data);
+          if (!cancelled && s?.ok && Array.isArray(s.data)) {
+            setIntraday(s.data);
+            if (s.data.length) setLatest(s.data[s.data.length - 1]);
+          }
         })
         .catch(() => {});
     };
@@ -73,11 +70,11 @@ export default function LiveDashboard({
   // Use two-decimal precision so subtle changes are visible (e.g., 0.58%, 0.62%).
   const tsValues = useMemo(() => intraday.map((s) => Math.round(s.probability * 10000) / 100), [intraday]);
 
-  const pct = today ? Math.round((today.probability || 0) * 10000) / 100 : null;
+  const pct = latest ? Math.round((latest.probability || 0) * 10000) / 100 : null;
   const updatedStr = useMemo(() => {
-    if (!today?.computedAt) return null;
-    try { return new Date(today.computedAt).toLocaleString(); } catch { return today.computedAt; }
-  }, [today?.computedAt]);
+    if (!latest?.at) return null;
+    try { return new Date(latest.at).toLocaleString(); } catch { return latest.at; }
+  }, [latest?.at]);
 
   const heat = (v: number | null) => {
     const x = v == null ? 0 : Math.max(0, Math.min(100, v));
@@ -90,7 +87,7 @@ export default function LiveDashboard({
       <div className="relative h-[34vh] flex items-center justify-center px-4 text-center">
         {/* removed live/updating indicator */}
         <div>
-          <div className="uppercase tracking-wider muted text-xs sm:text-sm">Daily Travel Risk</div>
+          <div className="uppercase tracking-wider muted text-xs sm:text-sm">Travel Risk</div>
           <div className="font-extrabold leading-tight" style={{ color: heat(pct) }}>
             <span className="text-6xl sm:text-7xl md:text-8xl">{pct !== null ? `${pct}%` : '—'}</span>
           </div>
@@ -146,9 +143,9 @@ export default function LiveDashboard({
                   {selectedSample ? `Snapshot ${new Date(selectedSample.at).toLocaleString()}` : 'Report'}
                 </h2>
                 <div className="flex items-center gap-2">
-                  {today?.date && (
+                  {latest?.date && (
                     <a
-                      href={`/api/pdf?day=${today?.date || ''}`}
+                      href={`/api/pdf?day=${latest?.date || ''}&at=${new Date(latest.at).toISOString().slice(11,16).replace(':','')}`}
                       aria-label="Download PDF"
                     className="inline-flex items-center justify-center w-8 h-8 rounded-md"
                     style={{ background: 'transparent' }}
@@ -190,12 +187,12 @@ export default function LiveDashboard({
                   </>
                 ) : (
                   <>
-                    <Markdown content={today?.report || ''} />
-                    {(today?.citations || []).length ? (
+                    <Markdown content={latest?.report || ''} />
+                    {(latest?.citations || []).length ? (
                       <div className="pt-4">
                         <div className="muted text-sm pb-1">Citations</div>
                         <ul className="list-disc pl-6 space-y-1">
-                          {(today?.citations || []).map((c, i) => (
+                          {(latest?.citations || []).map((c, i) => (
                             <li key={i}>
                               <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
                                 {c.title || c.url}
