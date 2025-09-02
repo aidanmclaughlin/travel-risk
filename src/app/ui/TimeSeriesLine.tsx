@@ -55,23 +55,23 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
       {
         label: 'Raw %',
         data: values,
-        borderColor: theme.primary,
+        borderColor: 'rgba(59,130,246,0.35)',
         backgroundColor: 'rgba(0,0,0,0)',
-        borderWidth: 2.2,
-        pointRadius: 4,
-        pointHitRadius: 16,
-        pointHoverRadius: 7,
-        pointBackgroundColor: '#ffffff',
-        pointBorderColor: 'rgba(59,130,246,0.65)',
-        pointBorderWidth: 2,
+        borderWidth: 1.4,
+        pointRadius: 3,
+        pointHitRadius: 14,
+        pointHoverRadius: 6,
+        pointBackgroundColor: 'rgba(255,255,255,0.85)',
+        pointBorderColor: 'rgba(59,130,246,0.45)',
+        pointBorderWidth: 1.6,
         tension: 0.25,
         order: 2,
       },
       {
         label: 'Trend',
         data: trend,
-        borderColor: 'rgba(167,139,250,0.95)',
-        borderWidth: 3,
+        borderColor: 'rgba(167,139,250,0.98)',
+        borderWidth: 3.2,
         pointRadius: 0,
         pointHoverRadius: 0,
         borderDash: [6, 4],
@@ -127,9 +127,9 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     afterDatasetsDraw(chart: import('chart.js').Chart<'line'>) {
       const meta = chart.getDatasetMeta(0);
       const { ctx } = chart; ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.shadowColor = 'rgba(59,130,246,0.55)';
-      ctx.shadowBlur = 12;
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.shadowColor = 'rgba(59,130,246,0.35)';
+      ctx.shadowBlur = 8;
       meta.data.forEach((el) => {
         const p = el as unknown as { x:number; y:number };
         if (!p || typeof p.x !== 'number') return;
