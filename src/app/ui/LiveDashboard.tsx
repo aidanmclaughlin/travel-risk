@@ -77,6 +77,8 @@ export default function LiveDashboard({
     return `hsl(${hue}, 72%, 44%)`;
   };
 
+  const [showInfo, setShowInfo] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="relative h-[34vh] flex items-center justify-center px-4 text-center">
@@ -86,7 +88,33 @@ export default function LiveDashboard({
           <div className="font-extrabold leading-tight" style={{ color: heat(pct) }}>
             <span className="text-6xl sm:text-7xl md:text-8xl">{pct !== null ? `${pct}%` : '—'}</span>
           </div>
-          <div className="mt-2 text-xs sm:text-sm muted">{updatedStr ? `Updated ${updatedStr}` : ''}</div>
+          <div className="mt-2 text-xs sm:text-sm muted inline-flex items-center gap-1 relative">
+            {updatedStr ? `Updated ${updatedStr}` : ''}
+            <button
+              aria-label="About this project"
+              onClick={() => setShowInfo(v => !v)}
+              className="inline-flex items-center justify-center w-4 h-4 rounded-full"
+              title="About"
+              style={{ background: 'color-mix(in oklab, var(--foreground) 12%, transparent)', color: 'var(--foreground)' }}
+            >
+              <span style={{ fontSize: 10, lineHeight: 1 }}>i</span>
+            </button>
+            {showInfo && (
+              <div className="absolute left-1/2 -translate-x-1/2 mt-7 z-10 surface-bg surface-border rounded-md shadow-xl p-3 text-left w-[min(92vw,520px)]" role="dialog" aria-modal="false">
+                <div className="text-sm" style={{ color: 'var(--foreground)' }}>
+                  <p>
+                    This dashboard tracks a single probability that a typical U.S. non‑citizen traveler attempting re‑entry within 30 days encounters an adverse border outcome.
+                  </p>
+                  <p className="mt-2">
+                    Every 10 minutes, the system runs a short research prompt via <strong>GPT‑5</strong> to produce a percent estimate, a brief report, and citations. No legal advice; treat the figure as an analytical signal.
+                  </p>
+                  <p className="mt-2">
+                    Contribute on GitHub: <a href="https://github.com/aidanmclaughlin/travel-risk" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--primary)' }}>aidanmclaughlin/travel-risk</a>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

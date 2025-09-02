@@ -246,6 +246,12 @@ Deployment: push to `main` on GitHub; Vercel picks up and deploys. Cron defined 
 - Prefer early returns and narrow, single‑purpose functions.
 - No global mutable state; all persistence goes through `store.ts`.
 - Types are explicit and exported from `types.ts` to keep route/component signatures predictable.
+ 
+### Comment Guidance
+
+- Keep comments to an absolute minimum.
+- Add them only when the intent cannot be made obvious through naming and small functions.
+- Prefer self‑documenting code, clear types, and focused helpers over explanatory prose.
 
 ---
 
@@ -290,4 +296,3 @@ This codebase previously supported multiple runs per day, daily rollups, and his
 - API: `src/app/api/tick/route.ts`, `src/app/api/intraday/route.ts`, `src/app/api/pdf/route.ts`
 
 Use these as anchors when modifying behavior.
-
