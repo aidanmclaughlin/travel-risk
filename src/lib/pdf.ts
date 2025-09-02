@@ -64,106 +64,78 @@ export function generateDailyPdf(sample: IntradaySample, opts: DailyPdfOptions =
   }
 
   const blocks = mdToBlocks(sample.report || '');
-  const content: string[] = [];
-  const push = (s: string) => content.push(s);
-  const setColor = (rgb: readonly number[]) => push(`${rgb[0]} ${rgb[1]} ${rgb[2]} rg`);
-
-  // Background
-  push('q');
-  push(`${col.bg[0]} ${col.bg[1]} ${col.bg[2]} rg`);
-  push(`0 0 ${width} ${height} re f`);
-  push('Q');
-
-  // Text
-  push('BT');
-  push(`${margin} ${height - margin} Td`);
-  push(`${leading} TL`);
-  setColor(col.text);
-  push(`/F2 ${titleSize} Tf`);
-  push(`(${escape(`Travel Risk Snapshot — ${sample.date} @ ${new Date(sample.at).toISOString().slice(11,16)} UTC`)}) Tj`);
-  push('T*');
-  push(`/F1 ${body} Tf`);
-  setColor(col.muted);
-  push(`(${escape(`Probability: ${pct}%`)}) Tj`);
-  push('T*');
-  push('T*');
-  setColor(col.accent);
-  push(`/F2 ${h2} Tf`);
-  push(`(${escape('Report')}) Tj`);
-  push('T*');
-  push(`/F1 ${body} Tf`);
-  setColor(col.text);
-
+  // Build multi-page content
   const maxChars = 88;
-  for (const b of blocks) {
-    if (b.kind === 'h2') {
-      push('T*'); setColor(col.accent); push(`/F2 ${h2} Tf`);
-      for (const ln of wrap(b.text || '', maxChars)) { push(`(${escape(ln)}) Tj`); push('T*'); }
-      push(`/F1 ${body} Tf`); setColor(col.text);
-    } else if (b.kind === 'p') {
-      for (const ln of wrap(b.text || '', maxChars)) { push(`(${escape(ln)}) Tj`); push('T*'); }
-      push('T*');
-    } else if (b.kind === 'quote') {
+  const pages: string[][] = [];
+  let cur: string[] = [];
+  const pushPage = (s: string) => cur.push(s);
+  const setColor = (rgb: readonly number[]) => pushPage(`${rgb[0]} ${rgb[1]} ${rgb[2]} rg`);
+  const linesPerPage = Math.floor((height - margin * 2) / leading);
+  let lineCount = 0;
+  const beginPage = (withHeader: boolean) => {
+    cur = [];
+    pages.push(cur);
+    pushPage('q'); setColor(col.bg); pushPage(`0 0 ${width} ${height} re f`); pushPage('Q');
+    pushPage('BT');
+    pushPage(`${margin} ${height - margin} Td`);
+    pushPage(`${leading} TL`);
+    setColor(col.text);
+    pushPage(`/F1 ${body} Tf`);
+    lineCount = 0;
+    if (withHeader) {
+      pushPage(`/F2 ${titleSize} Tf`);
+      pushPage(`(${escape(`Travel Risk Snapshot — ${sample.date} @ ${new Date(sample.at).toISOString().slice(11,16)} UTC`)}) Tj`); pushPage('T*'); lineCount++;
+      pushPage(`/F1 ${body} Tf`);
       setColor(col.muted);
-      for (const ln of wrap(b.text || '', maxChars - 2)) { push(`(${escape('» ' + ln)}) Tj`); push('T*'); }
-      setColor(col.text);
-      push('T*');
-    } else if (b.kind === 'ul' && b.items) {
-      for (const it of b.items) {
-        const lines = wrap(it, maxChars - 4);
-        push(`(${escape('• ' + lines[0])}) Tj`); push('T*');
-        for (let i = 1; i < lines.length; i++) { push(`(${escape('  ' + lines[i])}) Tj`); push('T*'); }
-      }
-      push('T*');
-    } else if (b.kind === 'ol' && b.items) {
-      let n = 1;
-      for (const it of b.items) {
-        const prefix = `${n}. `; n++;
-        const lines = wrap(it, maxChars - prefix.length);
-        push(`(${escape(prefix + lines[0])}) Tj`); push('T*');
-        for (let i = 1; i < lines.length; i++) { push(`(${escape('   ' + lines[i])}) Tj`); push('T*'); }
-      }
-      push('T*');
-    } else if (b.kind === 'code') {
-      push('ET');
-      push('q');
-      push(`${col.codeBg[0]} ${col.codeBg[1]} ${col.codeBg[2]} rg`);
-      push(`${margin - 6} ${height - margin - 4} ${width - margin*2 + 12} 18 re f`); // small cap line; not exact but adequate
-      push('Q');
-      push('BT');
-      push(`${margin} ${height - margin} Td`);
-      push(`${leading} TL`);
-      setColor(col.text);
-      push(`/F3 ${code} Tf`);
-      for (const ln of (b.text || '').split(/\n/)) { for (const w of wrap(ln, maxChars)) { push(`(${escape(w)}) Tj`); push('T*'); } }
-      push(`/F1 ${body} Tf`);
-    } else if (b.kind === 'hr') {
-      push('ET');
-      push('q');
-      push(`${col.muted[0]} ${col.muted[1]} ${col.muted[2]} RG`);
-      push(`${margin} ${height - margin - 2} ${width - margin*2} 0.5 re S`);
-      push('Q');
-      push('BT');
-      push(`${margin} ${height - margin} Td`);
-      push(`${leading} TL`);
+      pushPage(`(${escape(`Probability: ${pct}%`)}) Tj`); pushPage('T*'); lineCount++;
+      pushPage('T*'); lineCount++;
+      setColor(col.accent);
+      pushPage(`/F2 ${h2} Tf`);
+      pushPage(`(${escape('Report')}) Tj`); pushPage('T*'); lineCount++;
+      pushPage(`/F1 ${body} Tf`); setColor(col.text);
     }
-  }
-  push('ET');
+  };
+  const ensure = (n = 1) => { if (lineCount + n > linesPerPage) { pushPage('ET'); beginPage(false); } };
+  const write = (txt: string, font: string = `/F1 ${body}`) => { ensure(1); pushPage(`${font} Tf`); pushPage(`(${escape(txt)}) Tj`); pushPage('T*'); lineCount++; };
+  const blank = (n = 1) => { for (let i = 0; i < n; i++) { ensure(1); pushPage('T*'); lineCount++; } };
 
-  const stream = content.join('\n');
-  const bytes = new TextEncoder().encode(stream);
-  const objects: string[] = []; const xref: number[] = [];
-  const add = (obj: string) => { xref.push(objects.join('').length + header.length); objects.push(obj); };
+  beginPage(true);
+  for (const b of blocks) {
+    if (b.kind === 'h2') { blank(1); setColor(col.accent); for (const ln of wrap(b.text || '', maxChars)) write(ln, `/F2 ${h2}`); setColor(col.text); }
+    else if (b.kind === 'p') { for (const ln of wrap(b.text || '', maxChars)) write(ln); blank(1); }
+    else if (b.kind === 'quote') { setColor(col.muted); for (const ln of wrap(b.text || '', maxChars - 2)) write('> ' + ln); setColor(col.text); blank(1); }
+    else if (b.kind === 'ul' && b.items) { for (const it of b.items) { const lines = wrap(it, maxChars - 4); write('- ' + lines[0]); for (let i = 1; i < lines.length; i++) write('  ' + lines[i]); } blank(1); }
+    else if (b.kind === 'ol' && b.items) { let n = 1; for (const it of b.items) { const prefix = `${n}. `; n++; const lines = wrap(it, maxChars - prefix.length); write(prefix + lines[0]); for (let i = 1; i < lines.length; i++) write('   ' + lines[i]); } blank(1); }
+    else if (b.kind === 'code') { for (const ln of (b.text || '').split(/\n/)) { for (const w of wrap(ln, maxChars)) write(w, `/F3 ${code}`); } }
+    else if (b.kind === 'hr') { blank(1); }
+  }
+  pushPage('ET');
+
+  // Assemble PDF objects with multiple pages
+  const objects: string[] = [];
+  const add = (s: string) => { const id = objects.length + 1; objects.push(`${id} 0 obj\n${s}\nendobj\n`); return id; };
+  const reserve = () => { const id = objects.length + 1; objects.push(''); return id; };
+  const setObj = (id: number, s: string) => { objects[id - 1] = `${id} 0 obj\n${s}\nendobj\n`; };
+  const f1 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  const f2 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+  const f3 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>');
+  const contentIds: number[] = []; const pageIds: number[] = [];
+  for (const p of pages) {
+    const stream = p.join('\n');
+    const bytes = new TextEncoder().encode(stream);
+    const cid = add(`<< /Length ${bytes.length} >>\nstream\n${stream}\nendstream`);
+    contentIds.push(cid);
+    const pid = add(`<< /Type /Page /Parent 0 0 R /MediaBox [0 0 ${width} ${height}] /Contents ${cid} 0 R /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R /F3 ${f3} 0 R >> >> >>`);
+    pageIds.push(pid);
+  }
+  const pagesId = reserve();
+  setObj(pagesId, `<< /Type /Pages /Kids [${pageIds.map(id => id + ' 0 R').join(' ')}] /Count ${pageIds.length} >>`);
+  const catalogId = add(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   const header = '%PDF-1.4\n';
-  add('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
-  add('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
-  add(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >> >> >>\nendobj\n`);
-  add(`4 0 obj\n<< /Length ${bytes.length} >>\nstream\n${stream}\nendstream\nendobj\n`);
-  add('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n');
-  add('6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n');
-  add('7 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n');
   const bodyStr = header + objects.join('');
-  const xrefStart = bodyStr.length;
-  const trailer = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n` + xref.map((off) => `${String(off).padStart(10, '0')} 00000 n \n`).join('') + `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
-  return new TextEncoder().encode(bodyStr + trailer);
+  const offsets: number[] = []; let off = header.length;
+  for (const obj of objects) { offsets.push(off); off += obj.length; }
+  const xref = 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n' + offsets.map(o => `${String(o).padStart(10,'0')} 00000 n \n`).join('');
+  const trailer = `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${(bodyStr).length}\n%%EOF\n`;
+  return new TextEncoder().encode(bodyStr + xref + trailer);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import TimeSeriesLine from "./TimeSeriesLine";
 import type { ApiResponse, IntradaySample } from "@/lib/types";
 import Markdown from "./Markdown";
@@ -78,6 +78,25 @@ export default function LiveDashboard({
   };
 
   const [showInfo, setShowInfo] = useState(false);
+  const infoRef = useRef<HTMLDivElement | null>(null);
+  const infoBtnRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && showInfo) setShowInfo(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showInfo]);
+  useEffect(() => {
+    if (!showInfo) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+      if (infoRef.current?.contains(t)) return;
+      if (infoBtnRef.current?.contains(t)) return;
+      setShowInfo(false);
+    };
+    document.addEventListener('mousedown', onDown, true);
+    return () => document.removeEventListener('mousedown', onDown, true);
+  }, [showInfo]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -96,11 +115,12 @@ export default function LiveDashboard({
               className="inline-flex items-center justify-center w-4 h-4 rounded-full"
               title="About"
               style={{ background: 'color-mix(in oklab, var(--foreground) 12%, transparent)', color: 'var(--foreground)' }}
+              ref={infoBtnRef}
             >
               <span style={{ fontSize: 10, lineHeight: 1 }}>i</span>
             </button>
             {showInfo && (
-              <div className="absolute left-1/2 -translate-x-1/2 mt-7 z-10 surface-bg surface-border rounded-md shadow-xl p-3 text-left w-[min(92vw,520px)]" role="dialog" aria-modal="false">
+              <div ref={infoRef} className="absolute left-1/2 -translate-x-1/2 mt-7 z-10 surface-bg surface-border rounded-md shadow-xl p-3 text-left w-[min(92vw,520px)]" role="dialog" aria-modal="false">
                 <div className="text-sm" style={{ color: 'var(--foreground)' }}>
                   <p>
                     This dashboard tracks a single probability that a typical U.S. non‑citizen traveler attempting re‑entry within 30 days encounters an adverse border outcome.
