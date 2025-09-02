@@ -23,15 +23,15 @@ export default async function Image() {
     (
       <div
         style={{
-          width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
           background: 'linear-gradient(180deg, #0b1222 0%, #0d152a 100%)', color: '#e5e7eb',
           fontFamily: 'Geist, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 40 }}>
-          <div style={{ display: 'flex', fontSize: 24, letterSpacing: 6, textTransform: 'uppercase', color: '#94a3b8' }}>Travel Risk</div>
-          <div style={{ display: 'flex', fontWeight: 800, fontSize: 200, lineHeight: 0.95, color, marginTop: 6 }}>{p}%</div>
-          <div style={{ display: 'flex', marginTop: 18, fontSize: 28, color: '#cbd5e1', maxWidth: 920 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', padding: '48px 64px', width: '100%' }}>
+          <div style={{ display: 'flex', fontSize: 30, letterSpacing: 8, textTransform: 'uppercase', color: '#94a3b8' }}>Travel Risk</div>
+          <div style={{ display: 'flex', fontWeight: 800, fontSize: 260, lineHeight: 0.9, color, marginTop: 8 }}>{p}%</div>
+          <div style={{ display: 'flex', marginTop: 16, fontSize: 30, color: '#cbd5e1', maxWidth: 980 }}>
             Probability a typical U.S. non‑citizen traveler faces an adverse border outcome on re‑entry within 30 days.
           </div>
         </div>
