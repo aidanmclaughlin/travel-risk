@@ -70,10 +70,11 @@ export default function LiveDashboard({
   }, [showReport]);
 
   const tsLabels = useMemo(() => intraday.map((s) => new Date(s.at).toISOString().slice(11,16)), [intraday]);
-  const tsValues = useMemo(() => intraday.map((s) => Math.round(s.average * 1000) / 10), [intraday]);
+  // Use two-decimal precision so subtle changes are visible (e.g., 0.58%, 0.62%).
+  const tsValues = useMemo(() => intraday.map((s) => Math.round(s.average * 10000) / 100), [intraday]);
 
-  const avgPct = today ? Math.round((today.average || 0) * 1000) / 10 : null;
-  const stdPct = today ? Math.round((today.stddev || 0) * 1000) / 10 : null;
+  const avgPct = today ? Math.round((today.average || 0) * 10000) / 100 : null;
+  const stdPct = today ? Math.round((today.stddev || 0) * 10000) / 100 : null;
   const runsUsed = today?.runCount ?? (Array.isArray(today?.estimates) ? today!.estimates.length : null);
   const updatedStr = useMemo(() => {
     if (!today?.computedAt) return null;
@@ -129,24 +130,32 @@ export default function LiveDashboard({
         </button>
       </div>
 
-      {showReport && (selectedSample?.report || today?.medianReport) && (
+      {showReport && (
         <div
           className="fixed inset-0 z-50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) { setShowReport(false); setSelectedSample(null); }
-          }}
           role="dialog"
           aria-modal="true"
         >
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-4 sm:inset-8 md:inset-10 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => { setShowReport(false); setSelectedSample(null); }}
+          />
+          <div
+            className="absolute inset-4 sm:inset-8 md:inset-10 flex items-center justify-center"
+            onClick={() => { setShowReport(false); setSelectedSample(null); }}
+          >
             <div
               className="surface-bg surface-border rounded-2xl shadow-2xl overflow-hidden animate-[pop-in_340ms_cubic-bezier(0.17,0.89,0.32,1.28)] w-full max-w-4xl"
               style={{ color: 'var(--foreground)', maxHeight: '85vh' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'color-mix(in oklab, var(--foreground) 8%, transparent)', borderStyle: 'solid' }}>
-                <h2 className="text-lg font-semibold">{selectedSample ? `Snapshot ${new Date(selectedSample.at).toLocaleString()}` : 'Median Report'}</h2>
+                <h2 className="text-lg font-semibold flex items-center gap-3">
+                  {selectedSample ? `Snapshot ${new Date(selectedSample.at).toLocaleString()}` : 'Median Report'}
+                  {selectedSample && (
+                    <span className="text-sm font-normal muted">Avg {Math.round(selectedSample.average * 10000) / 100}% • Med {Math.round(selectedSample.median * 10000) / 100}%</span>
+                  )}
+                </h2>
                 <div className="flex items-center gap-2">
                   {today?.date && (
                     <a
@@ -172,21 +181,43 @@ export default function LiveDashboard({
                 </div>
               </div>
               <div className="p-5 sm:p-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 64px)' }}>
-                <Markdown content={selectedSample?.report || today?.medianReport || ''} />
-                {(selectedSample?.citations?.length ? selectedSample.citations : (today?.medianCitations || []))?.length ? (
-                  <div className="pt-4">
-                    <div className="muted text-sm pb-1">Citations</div>
-                    <ul className="list-disc pl-6 space-y-1">
-                    {(selectedSample?.citations || today?.medianCitations || []).map((c, i) => (
-                      <li key={i}>
-                        <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
-                          {c.title || c.url}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+                {selectedSample ? (
+                  <>
+                    <Markdown content={selectedSample.report || '*No report captured for this snapshot.*'} />
+                    {(selectedSample.citations || []).length ? (
+                      <div className="pt-4">
+                        <div className="muted text-sm pb-1">Citations</div>
+                        <ul className="list-disc pl-6 space-y-1">
+                          {(selectedSample.citations || []).map((c, i) => (
+                            <li key={i}>
+                              <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
+                                {c.title || c.url}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <Markdown content={today?.medianReport || ''} />
+                    {(today?.medianCitations || []).length ? (
+                      <div className="pt-4">
+                        <div className="muted text-sm pb-1">Citations</div>
+                        <ul className="list-disc pl-6 space-y-1">
+                          {(today?.medianCitations || []).map((c, i) => (
+                            <li key={i}>
+                              <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
+                                {c.title || c.url}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
           </div>
