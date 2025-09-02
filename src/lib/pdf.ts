@@ -130,6 +130,12 @@ export function generateDailyPdf(sample: IntradaySample, opts: DailyPdfOptions =
   }
   const pagesId = reserve();
   setObj(pagesId, `<< /Type /Pages /Kids [${pageIds.map(id => id + ' 0 R').join(' ')}] /Count ${pageIds.length} >>`);
+  // Fix each page's /Parent to point at the real /Pages object
+  for (let i = 0; i < pageIds.length; i++) {
+    const pid = pageIds[i];
+    const cid = contentIds[i];
+    setObj(pid, `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${width} ${height}] /Contents ${cid} 0 R /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R /F3 ${f3} 0 R >> >> >>`);
+  }
   const catalogId = add(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   const header = '%PDF-1.4\n';
   const bodyStr = header + objects.join('');
