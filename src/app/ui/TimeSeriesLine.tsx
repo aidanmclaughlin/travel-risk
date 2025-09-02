@@ -63,6 +63,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
         backgroundColor: 'rgba(0,0,0,0)',
         borderWidth: 2,
         pointRadius: 3,
+        pointHitRadius: 10,
         pointHoverRadius: 4,
         tension: 0.25,
       },
@@ -85,18 +86,11 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     // Extra horizontal padding to prevent point labels from clipping at edges
     layout: { padding: { left: 48, right: 48 } },
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
-    // Make hover forgiving: activate the nearest point along X without requiring strict intersection
-    interaction: { mode: 'nearest', intersect: false, axis: 'x' },
     scales: {
       x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
       y: { beginAtZero: true, grid: { display: false }, ticks: { display: false }, border: { display: false } },
     },
     animation: { duration: 600, easing: 'easeOutQuart' },
-    onHover: (_event, activeElements) => {
-      if (!activeElements || !activeElements.length) { setHoverIdx(null); return; }
-      const idx = activeElements[0].index;
-      setHoverIdx(typeof idx === 'number' ? idx : null);
-    },
   }), []);
 
   // Plugin to label each point with time and value
@@ -138,8 +132,8 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
         if (typeof v === 'number' && elem) {
           const x = elem.x;
           const y = elem.y;
-          const time = labels[i] ?? '';
-          const label = `${time} • ${v.toFixed(2)}%`;
+          const dt = samples[i] ? new Date(samples[i].at).toLocaleString() : (labels[i] ?? '');
+          const label = `${v.toFixed(2)}% • ${dt}`;
           const metrics = ctx.measureText(label);
           const w = Math.ceil(metrics.width) + padX * 2;
           const h = 18;
@@ -166,7 +160,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
       }
       ctx.restore();
     },
-  }), [labels, values, hoverIdx]);
+  }), [labels, values, hoverIdx, samples]);
   const chartRef = useRef<ChartInst<'line'> | null>(null);
   const captureRef = (instance: unknown) => {
     chartRef.current = instance as ChartInst<'line'> | null;
@@ -182,5 +176,14 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     if (s) onSampleClick(s, idx);
   };
 
-  return <Line ref={captureRef} data={data} options={options} plugins={[labelsPlugin]} onClick={onCanvasClick} onMouseLeave={() => setHoverIdx(null)} style={{ width: '100%', height: '100%' }} />;
+  const onCanvasMove = (evt: React.MouseEvent<HTMLCanvasElement>) => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const elements: ActiveElement[] = getElementAtEvent(chart, evt);
+    if (!elements || !elements.length) { setHoverIdx(null); return; }
+    const idx = elements[0].index;
+    setHoverIdx(typeof idx === 'number' ? idx : null);
+  };
+
+  return <Line ref={captureRef} data={data} options={options} plugins={[labelsPlugin]} onClick={onCanvasClick} onMouseMove={onCanvasMove} onMouseLeave={() => setHoverIdx(null)} style={{ width: '100%', height: '100%' }} />;
 }
