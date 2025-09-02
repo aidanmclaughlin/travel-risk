@@ -9,7 +9,6 @@ html, body {
   touch-action: pan-y;
 }
 
-/* Subtle themed background gradient */
 body {
   background:
     radial-gradient(1200px 800px at 80% -10%, color-mix(in oklab, var(--primary) 32%, transparent) 0%, rgba(0,0,0,0) 60%),
@@ -77,11 +76,9 @@ body { color: var(--foreground); font-family: var(--font-geist-sans), ui-sans-se
 
 .animate-bounce-slow { animation: bounce-slow 1.6s ease-in-out infinite; }
 
-/* Helper classes tied to theme variables */
 .surface-bg { background: var(--surface); }
 .surface-border { border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent); }
 
-/* Minimal prose styling for Markdown rendering */
 article.prose {
   line-height: 1.7;
   font-size: 0.975rem;

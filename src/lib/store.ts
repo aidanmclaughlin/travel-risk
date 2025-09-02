@@ -6,8 +6,6 @@ import { IntradaySample } from './types';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const INTRADAY_DIR = path.join(DATA_DIR, 'intraday');
 
-// Prefer Vercel Blob in production. Tokens are optional on Vercel because the
-// platform injects scoped credentials automatically; locally, tokens are needed.
 function blobToken(): string | undefined {
   return process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_TOKEN;
 }
@@ -18,7 +16,6 @@ async function tryBlobPut(key: string, body: string, contentType: string): Promi
       access: 'public',
       addRandomSuffix: false,
       contentType,
-      // Passing token is optional on Vercel; required locally if you have one.
       token: blobToken(),
     });
     return true;
@@ -36,14 +33,11 @@ async function tryBlobList(prefix: string) {
 }
 
 async function ensureDir(): Promise<void> {
-  // Only used for local fallback
   try {
     await fs.mkdir(INTRADAY_DIR, { recursive: true });
   } catch {}
 }
 
-
-// ---------- Intraday (10-minute) samples ----------
 
 export async function saveIntradaySample(sample: IntradaySample): Promise<void> {
   const d = sample.date;
@@ -69,11 +63,19 @@ export async function listIntraday(date: string): Promise<IntradaySample[]> {
     const files = blobs
       .filter(b => b.pathname.startsWith(prefix) && b.pathname.endsWith('.json'))
       .sort((a, b) => a.pathname.localeCompare(b.pathname));
-    for (const f of files) {
-      const res = await fetch(f.url, { cache: 'no-store' });
-      if (!res.ok) continue;
-      try { out.push(await res.json() as IntradaySample); } catch {}
-    }
+    // Fetch JSONs in parallel for speed on days with many samples
+    const results = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const res = await fetch(f.url, { cache: 'no-store' });
+          if (!res.ok) return null;
+          return (await res.json()) as IntradaySample;
+        } catch {
+          return null;
+        }
+      })
+    );
+    for (const r of results) if (r) out.push(r);
     return out;
   }
   await ensureDir();

@@ -16,7 +16,6 @@ export default function LiveDashboard({
 }) {
   const [intraday, setIntraday] = useState<IntradaySample[]>(initialIntraday);
   const [latest, setLatest] = useState<IntradaySample | null>(initialLatest);
-  // background refresh, but no visible indicator
   const [showReport, setShowReport] = useState(false);
   const [selectedSample, setSelectedSample] = useState<IntradaySample | null>(null);
 
@@ -43,21 +42,17 @@ export default function LiveDashboard({
         })
         .catch(() => {});
     };
-    // initial small delay to allow SSR to paint
     const id = setInterval(poll, 30000);
-    // one immediate refresh shortly after mount
     const once = setTimeout(poll, 1200);
     return () => { cancelled = true; clearInterval(id); clearTimeout(once); };
   }, []);
 
-  // Only Escape closes the report overlay
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && showReport) setShowReport(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showReport]);
 
-  // Allow opening the report by a downward scroll gesture (shows current snapshot)
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       if (!showReport && e.deltaY > 10) setShowReport(true);
@@ -97,7 +92,6 @@ export default function LiveDashboard({
 
       <div className="relative h-[66vh]">
         <div className="absolute inset-0">
-          {/* Intraday series (10-minute cadence) */}
           <TimeSeriesLine
             labels={tsLabels}
             values={tsValues}
@@ -176,7 +170,7 @@ export default function LiveDashboard({
                         <ul className="list-disc pl-6 space-y-1">
                           {(selectedSample.citations || []).map((c, i) => (
                             <li key={i}>
-                              <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
+                              <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noopener noreferrer">
                                 {c.title || c.url}
                               </a>
                             </li>
@@ -194,7 +188,7 @@ export default function LiveDashboard({
                         <ul className="list-disc pl-6 space-y-1">
                           {(latest?.citations || []).map((c, i) => (
                             <li key={i}>
-                              <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
+                              <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noopener noreferrer">
                                 {c.title || c.url}
                               </a>
                             </li>

@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get('day') || toDateStrUTC();
-  const at = searchParams.get('at'); // optional HHmm
+  const at = searchParams.get('at');
   const samples = await listIntraday(date);
   if (!samples.length) {
     return new NextResponse('No samples for requested date', { status: 404 });

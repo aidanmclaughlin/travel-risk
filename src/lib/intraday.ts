@@ -1,8 +1,6 @@
 import { IntradaySample, RunDetail } from './types';
 import { floorToTenMinutesUTC, toDateStrUTC } from './date';
 import { saveIntradaySample } from './store';
-
-// Record a single intraday sample from a single run.
 export async function recordIntradayFromRun(latest: RunDetail): Promise<IntradaySample> {
   const now = floorToTenMinutesUTC(new Date());
   const sample: IntradaySample = {

@@ -12,19 +12,14 @@ function escapeHtml(s: string): string {
 }
 
 function inline(md: string): string {
-  // code spans
   md = md.replace(/`([^`]+)`/g, (_, c) => `<code>${escapeHtml(c)}</code>`);
-  // bold
   md = md.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // italics
   md = md.replace(/\*(?!\s)([^*]+)\*/g, '<em>$1</em>');
-  // links [text](url)
-  md = md.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  md = md.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   return md;
 }
 
 function mdToHtml(md: string): string {
-  // Handle fenced code blocks first
   const codeBlockRegex = /```([\w-]*)\n([\s\S]*?)```/g;
   const placeholders: string[] = [];
   md = md.replace(codeBlockRegex, (_, _lang, code) => {

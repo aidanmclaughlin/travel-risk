@@ -2,7 +2,6 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { SingleEstimate } from './types';
 
-// Project-wide: no fallbacks. Use explicit model (default gpt-5).
 const MODEL = process.env.DR_MODEL || 'gpt-5';
 
 const OutputSchema = z.object({
@@ -30,7 +29,6 @@ export async function deepResearchRisk(): Promise<SingleEstimate> {
         reasoning: { effort: 'high' },
       });
 
-  // Strict parsing only: require message/output_text and a terminal JSON block
   const text = extractOutputTextStrict(resp);
   const parsed = extractJsonStrict(text);
   const safe = OutputSchema.safeParse(parsed);
@@ -59,8 +57,6 @@ function extractOutputTextStrict(resp: unknown): string {
   if (!text) throw new Error('LLM response contained no output_text');
   return text;
 }
-
-// (no extra debug helpers)
 
 function buildPrompt() {
   const today = new Date().toISOString().slice(0, 10);
@@ -129,6 +125,4 @@ function extractJsonStrict(text: string): unknown {
   return JSON.parse(endAnchored[1]);
 }
 
-// (no probability extraction fallbacks)
-
-// (unused helpers removed)
+ 

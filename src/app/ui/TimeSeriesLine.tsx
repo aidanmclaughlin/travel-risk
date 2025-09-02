@@ -70,7 +70,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
       {
         label: 'Smoothed',
         data: smoothed,
-        borderColor: 'rgba(167,139,250,0.95)', // static accent-like color for canvas
+        borderColor: 'rgba(167,139,250,0.95)',
         borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -83,7 +83,6 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
   const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    // Extra horizontal padding to prevent point labels from clipping at edges
     layout: { padding: { left: 48, right: 48 } },
     plugins: {
       legend: { display: false },
@@ -118,7 +117,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     interaction: { mode: 'nearest', intersect: true },
   }), [labels, samples]);
 
-  // No custom hover plugin; default tooltip shows percent + datetime.
+  
   const chartRef = useRef<ChartInst<'line'> | null>(null);
   const captureRef = (instance: unknown) => {
     chartRef.current = instance as ChartInst<'line'> | null;

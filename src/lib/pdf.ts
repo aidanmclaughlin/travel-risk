@@ -3,8 +3,8 @@ import { IntradaySample } from './types';
 export type DailyPdfOptions = { probabilityPct?: number };
 
 export function generateDailyPdf(result: IntradaySample, opts: DailyPdfOptions = {}): Uint8Array {
-  const width = 612; // 8.5in
-  const height = 792; // 11in
+  const width = 612;
+  const height = 792;
   const margin = 50;
   const fontSizeTitle = 18;
   const fontSizeBody = 12;
@@ -34,7 +34,7 @@ export function generateDailyPdf(result: IntradaySample, opts: DailyPdfOptions =
   }
 
   const lines: string[] = [];
-  const maxChars = 90; // rough width
+  const maxChars = 90;
   lines.push(`Travel Risk Snapshot (U.S. Non-Citizens) — ${result.date} @ ${new Date(result.at).toISOString().slice(11,16)} UTC`);
   lines.push('');
   lines.push(`Probability: ${probPct}%`);
@@ -60,11 +60,9 @@ export function generateDailyPdf(result: IntradaySample, opts: DailyPdfOptions =
   content.push(`/F1 ${fontSizeTitle} Tf`);
   content.push(`${margin} ${y} Td`);
   content.push(`${leading} TL`);
-  // Title
   content.push(`(${escapePdfText(lines[0] || '')}) Tj`);
   content.push('T*');
   content.push('T*');
-  // Body
   content.push(`/F1 ${fontSizeBody} Tf`);
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
