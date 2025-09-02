@@ -7,20 +7,7 @@ export function toDateStrUTC(d: Date = new Date()): string {
     .slice(0, 10);
 }
 
-export function parseDateStrUTC(s: string): Date | null {
-  // Expect YYYY-MM-DD
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-  const [y, m, d] = s.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  return Number.isNaN(dt.getTime()) ? null : dt;
-}
-
-// Format a Date (UTC) into HHmm string for path-friendly 10-minute buckets
-export function toHHmmUTC(d: Date = new Date()): string {
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const mm = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${hh}${mm}`;
-}
+// (No additional helpers; keep this file minimal.)
 
 export function floorToTenMinutesUTC(d: Date = new Date()): Date {
   const ts = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), Math.floor(d.getUTCMinutes() / 10) * 10, 0, 0));

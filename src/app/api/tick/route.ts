@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { computeOneRun } from '@/lib/daily';
 import { recordIntradayFromRun, recordIntradayBlank } from '@/lib/intraday';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Exactly one run per tick → one intraday sample.
     const run = await computeOneRun();

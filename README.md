@@ -102,7 +102,4 @@ PDF export
 
 - `GET /api/pdf?day=YYYY-MM-DD&at=HHmm` returns a minimal PDF containing the snapshot’s probability and report.
 
-For Agents
-----------
-
-See `AGENTS.md` (root) plus guidance in `src/lib/AGENTS.md` and `src/app/api/AGENTS.md`. The UI now renders the intraday line; daily CI bands have been removed.
+ 

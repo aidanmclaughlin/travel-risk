@@ -14,7 +14,6 @@ export type RunDetail = {
   report: string;
   citations: Citation[];
   computedAt: string; // ISO timestamp
-  model?: string;
 };
 
 export type ApiResponse<T> =
