@@ -35,7 +35,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     primary: '#2563eb',
     foreground: '#0f172a',
   });
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // No local hover index; rely on built-in tooltip for hover labels
   useEffect(() => {
     const readVars = () => {
       const cs = getComputedStyle(document.documentElement);
@@ -85,82 +85,40 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     maintainAspectRatio: false,
     // Extra horizontal padding to prevent point labels from clipping at edges
     layout: { padding: { left: 48, right: 48 } },
-    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        displayColors: false,
+        backgroundColor: 'rgba(15, 23, 42, 0.92)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        borderColor: 'rgba(255,255,255,0.15)',
+        borderWidth: 1,
+        padding: 8,
+        caretSize: 6,
+        callbacks: {
+          title: (items) => {
+            const i = items[0]?.dataIndex ?? 0;
+            const dt = samples[i] ? new Date(samples[i].at) : null;
+            return dt ? dt.toLocaleString() : (labels[i] ?? '');
+          },
+          label: (item) => {
+            const v = typeof item.parsed?.y === 'number' ? item.parsed.y : Number(item.formattedValue);
+            return Number.isFinite(v) ? `${v.toFixed(2)}%` : String(item.formattedValue);
+          },
+        },
+      },
+    },
     scales: {
       x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
       y: { beginAtZero: true, grid: { display: false }, ticks: { display: false }, border: { display: false } },
     },
     animation: { duration: 600, easing: 'easeOutQuart' },
-  }), []);
+    interaction: { mode: 'nearest', intersect: true },
+  }), [labels, samples]);
 
-  // Plugin to label each point with time and value
-  const labelsPlugin = useMemo(() => ({
-    id: 'roundedPointLabels',
-    afterDatasetsDraw(chart: import('chart.js').Chart<'line'>) {
-      const { ctx } = chart;
-      const dsMeta = chart.getDatasetMeta(0);
-      ctx.save();
-      const fontFamily = getComputedStyle(document.body).fontFamily || 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif';
-      ctx.font = `600 10px ${fontFamily}`;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-
-      const padX = 6;
-      const radius = 6;
-      const offset = 16;
-      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim() || '#0f172a';
-      const surface = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff';
-      const fill = /^#?[0-9A-Fa-f]{6}$/.test(surface) ? `${surface}E6` : 'rgba(255,255,255,0.9)';
-      const strokeStyle = 'rgba(0,0,0,0.12)';
-
-      function roundRect(x: number, y: number, w: number, h: number, r: number) {
-        const rr = Math.min(r, Math.min(w, h) / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + rr, y);
-        ctx.arcTo(x + w, y, x + w, y + h, rr);
-        ctx.arcTo(x + w, y + h, x, y + h, rr);
-        ctx.arcTo(x, y + h, x, y, rr);
-        ctx.arcTo(x, y, x + w, y, rr);
-        ctx.closePath();
-      }
-
-      // Draw label only for the hovered point
-      if (hoverIdx != null) {
-        const i = hoverIdx;
-        const v = values[i];
-        const elem = dsMeta.data[i];
-        if (typeof v === 'number' && elem) {
-          const x = elem.x;
-          const y = elem.y;
-          const dt = samples[i] ? new Date(samples[i].at).toLocaleString() : (labels[i] ?? '');
-          const label = `${v.toFixed(2)}% • ${dt}`;
-          const metrics = ctx.measureText(label);
-          const w = Math.ceil(metrics.width) + padX * 2;
-          const h = 18;
-          let bx = x - w / 2;
-          let by = y - offset - h;
-          const ca = chart.chartArea;
-          const topBound = ca.top + 4;
-          const bottomBound = ca.bottom - 4;
-          const leftBound = ca.left + 4;
-          const rightBound = ca.right - 4;
-          if (by < topBound) by = y + offset; // flip below
-          if (by + h > bottomBound) by = bottomBound - h;
-          if (bx < leftBound) bx = leftBound;
-          if (bx + w > rightBound) bx = rightBound - w;
-
-          ctx.fillStyle = fill;
-          ctx.strokeStyle = strokeStyle;
-          roundRect(bx, by, w, h, radius);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = textColor;
-          ctx.fillText(label, bx + w / 2, by + h / 2 + 0.5);
-        }
-      }
-      ctx.restore();
-    },
-  }), [labels, values, hoverIdx, samples]);
+  // No custom hover plugin; default tooltip shows percent + datetime.
   const chartRef = useRef<ChartInst<'line'> | null>(null);
   const captureRef = (instance: unknown) => {
     chartRef.current = instance as ChartInst<'line'> | null;
@@ -176,14 +134,5 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     if (s) onSampleClick(s, idx);
   };
 
-  const onCanvasMove = (evt: React.MouseEvent<HTMLCanvasElement>) => {
-    const chart = chartRef.current;
-    if (!chart) return;
-    const elements: ActiveElement[] = getElementAtEvent(chart, evt);
-    if (!elements || !elements.length) { setHoverIdx(null); return; }
-    const idx = elements[0].index;
-    setHoverIdx(typeof idx === 'number' ? idx : null);
-  };
-
-  return <Line ref={captureRef} data={data} options={options} plugins={[labelsPlugin]} onClick={onCanvasClick} onMouseMove={onCanvasMove} onMouseLeave={() => setHoverIdx(null)} style={{ width: '100%', height: '100%' }} />;
+  return <Line ref={captureRef} data={data} options={options} onClick={onCanvasClick} style={{ width: '100%', height: '100%' }} />;
 }
