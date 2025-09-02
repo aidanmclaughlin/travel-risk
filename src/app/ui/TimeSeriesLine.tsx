@@ -22,8 +22,7 @@ function ema(values: number[], alpha = 0.18): number[] {
   for (let i = 0; i < values.length; i++) { prev = alpha * values[i] + (1 - alpha) * (i ? prev : values[i]); out.push(+prev.toFixed(2)); }
   return out;
 }
-function median(arr: number[]): number { if (!arr.length) return 0; const s = [...arr].sort((a,b)=>a-b); const m = Math.floor(s.length/2); return s.length%2? s[m] : (s[m-1]+s[m])/2; }
-function madSigma(res: number[]): number { if (res.length < 3) return 0; const m = median(res); const dev = res.map(r => Math.abs(r - m)); const mad = median(dev); return mad * 1.4826; }
+//
 
 export default function TimeSeriesLine({ labels, values, samples, onSampleClick }: { labels: string[]; values: number[]; samples: IntradaySample[]; onSampleClick?: (s: IntradaySample, idx: number) => void; }) {
   const [theme, setTheme] = useState({
@@ -49,35 +48,16 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
   }, []);
 
   const trend = useMemo(() => ema(values, 0.18), [values]);
-  const avg = useMemo(() => (values.length ? values.reduce((a,b)=>a+b,0)/values.length : 0), [values]);
-  const std = useMemo(() => {
-    if (!values.length) return 0;
-    const m = avg; return Math.sqrt(values.reduce((s,v)=>s+Math.pow(v-m,2),0)/values.length);
-  }, [values, avg]);
-  const robust = useMemo(() => madSigma(values.map((v,i)=>v-(trend[i]??v))) || std*0.5, [values, trend, std]);
-  const band = useMemo(() => Math.max(0.0001, robust), [robust]);
-  const bandUpper = useMemo(() => trend.map(v => v + band), [trend, band]);
-  const bandLower = useMemo(() => trend.map(v => Math.max(0, v - band)), [trend, band]);
 
   const data = useMemo(() => ({
     labels,
     datasets: [
       {
-        label: 'Avg %',
-        data: values.map(() => avg),
-        borderColor: 'rgba(148,163,184,0.55)',
-        borderDash: [6,4],
-        borderWidth: 1.5,
-        pointRadius: 0,
-        tension: 0,
-        order: 1,
-      },
-      {
         label: 'Raw %',
         data: values,
-        borderColor: 'rgba(59,130,246,0.45)',
+        borderColor: theme.primary,
         backgroundColor: 'rgba(0,0,0,0)',
-        borderWidth: 1.5,
+        borderWidth: 2.2,
         pointRadius: 4,
         pointHitRadius: 16,
         pointHoverRadius: 7,
@@ -85,7 +65,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
         pointBorderColor: 'rgba(59,130,246,0.65)',
         pointBorderWidth: 2,
         tension: 0.25,
-        order: 3,
+        order: 2,
       },
       {
         label: 'Trend',
@@ -96,10 +76,10 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
         pointHoverRadius: 0,
         borderDash: [6, 4],
         tension: 0.3,
-        order: 2,
+        order: 1,
       },
     ],
-  }), [labels, values, trend, theme.primary, avg]);
+  }), [labels, values, trend]);
 
   const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
@@ -142,41 +122,10 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     },
   }), [labels, samples]);
 
-  const bandPlugin = useMemo(() => ({
-    id: 'smoothedBand',
-    beforeDatasetsDraw(chart: import('chart.js').Chart<'line'>) {
-      if (!values.length) return;
-      const { ctx } = chart;
-      type Scale = { getPixelForValue: (v: number) => number };
-      const x = chart.scales.x as unknown as Scale;
-      const y = chart.scales.y as unknown as Scale;
-      const N = values.length;
-      ctx.save();
-      ctx.beginPath();
-      for (let i = 0; i < N; i++) {
-        const px = x.getPixelForValue(i);
-        const py = y.getPixelForValue(bandUpper[i]);
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      for (let i = N - 1; i >= 0; i--) {
-        const px = x.getPixelForValue(i);
-        const py = y.getPixelForValue(bandLower[i]);
-        ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      const g = ctx.createLinearGradient(0, y.getPixelForValue(Math.max(...bandUpper)), 0, y.getPixelForValue(Math.min(...bandLower)));
-      g.addColorStop(0, 'rgba(167,139,250,0.18)');
-      g.addColorStop(1, 'rgba(167,139,250,0.06)');
-      ctx.fillStyle = g;
-      ctx.fill();
-      ctx.restore();
-    }
-  }), [bandUpper, bandLower, values.length]);
-
   const haloPlugin = useMemo(() => ({
     id: 'pointHalo',
     afterDatasetsDraw(chart: import('chart.js').Chart<'line'>) {
-      const meta = chart.getDatasetMeta(1);
+      const meta = chart.getDatasetMeta(0);
       const { ctx } = chart; ctx.save();
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       ctx.shadowColor = 'rgba(59,130,246,0.55)';
@@ -204,5 +153,5 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     if (s) onSampleClick(s, idx);
   };
 
-  return <Line ref={captureRef} data={data} options={options} plugins={[bandPlugin, haloPlugin]} onClick={onCanvasClick} style={{ width: '100%', height: '100%' }} />;
+  return <Line ref={captureRef} data={data} options={options} plugins={[haloPlugin]} onClick={onCanvasClick} style={{ width: '100%', height: '100%' }} />;
 }
