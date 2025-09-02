@@ -60,7 +60,7 @@ export default function LiveDashboard({
     return () => window.removeEventListener('keydown', onKey);
   }, [showReport]);
 
-  // Allow opening the report by a downward scroll gesture (shows current daily median)
+  // Allow opening the report by a downward scroll gesture (shows current snapshot)
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       if (!showReport && e.deltaY > 10) setShowReport(true);
@@ -71,11 +71,9 @@ export default function LiveDashboard({
 
   const tsLabels = useMemo(() => intraday.map((s) => new Date(s.at).toISOString().slice(11,16)), [intraday]);
   // Use two-decimal precision so subtle changes are visible (e.g., 0.58%, 0.62%).
-  const tsValues = useMemo(() => intraday.map((s) => Math.round(s.average * 10000) / 100), [intraday]);
+  const tsValues = useMemo(() => intraday.map((s) => Math.round(s.probability * 10000) / 100), [intraday]);
 
-  const avgPct = today ? Math.round((today.average || 0) * 10000) / 100 : null;
-  const stdPct = today ? Math.round((today.stddev || 0) * 10000) / 100 : null;
-  const runsUsed = today?.runCount ?? (Array.isArray(today?.estimates) ? today!.estimates.length : null);
+  const pct = today ? Math.round((today.probability || 0) * 10000) / 100 : null;
   const updatedStr = useMemo(() => {
     if (!today?.computedAt) return null;
     try { return new Date(today.computedAt).toLocaleString(); } catch { return today.computedAt; }
@@ -93,16 +91,10 @@ export default function LiveDashboard({
         {/* removed live/updating indicator */}
         <div>
           <div className="uppercase tracking-wider muted text-xs sm:text-sm">Daily Travel Risk</div>
-          <div className="font-extrabold leading-tight" style={{ color: heat(avgPct) }}>
-            <span className="text-6xl sm:text-7xl md:text-8xl">{avgPct !== null ? `${avgPct}%` : '—'}</span>
-            {typeof stdPct === 'number' && (
-              <span className="ml-3 text-base sm:text-lg md:text-xl align-middle muted">± {stdPct}%</span>
-            )}
+          <div className="font-extrabold leading-tight" style={{ color: heat(pct) }}>
+            <span className="text-6xl sm:text-7xl md:text-8xl">{pct !== null ? `${pct}%` : '—'}</span>
           </div>
-          <div className="mt-2 text-xs sm:text-sm muted">
-            {updatedStr ? `Updated ${updatedStr}` : ''}
-            {runsUsed != null ? (updatedStr ? ' • ' : '') + `Avg of ${runsUsed} run${runsUsed === 1 ? '' : 's'}` : ''}
-          </div>
+          <div className="mt-2 text-xs sm:text-sm muted">{updatedStr ? `Updated ${updatedStr}` : ''}</div>
         </div>
       </div>
 
@@ -151,10 +143,7 @@ export default function LiveDashboard({
             >
               <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3" style={{ borderColor: 'color-mix(in oklab, var(--foreground) 8%, transparent)', borderStyle: 'solid' }}>
                 <h2 className="text-lg font-semibold flex items-center gap-3">
-                  {selectedSample ? `Snapshot ${new Date(selectedSample.at).toLocaleString()}` : 'Median Report'}
-                  {selectedSample && (
-                    <span className="text-sm font-normal muted">Avg {Math.round(selectedSample.average * 10000) / 100}% • Med {Math.round(selectedSample.median * 10000) / 100}%</span>
-                  )}
+                  {selectedSample ? `Snapshot ${new Date(selectedSample.at).toLocaleString()}` : 'Report'}
                 </h2>
                 <div className="flex items-center gap-2">
                   {today?.date && (
@@ -201,12 +190,12 @@ export default function LiveDashboard({
                   </>
                 ) : (
                   <>
-                    <Markdown content={today?.medianReport || ''} />
-                    {(today?.medianCitations || []).length ? (
+                    <Markdown content={today?.report || ''} />
+                    {(today?.citations || []).length ? (
                       <div className="pt-4">
                         <div className="muted text-sm pb-1">Citations</div>
                         <ul className="list-disc pl-6 space-y-1">
-                          {(today?.medianCitations || []).map((c, i) => (
+                          {(today?.citations || []).map((c, i) => (
                             <li key={i}>
                               <a className="hover:underline" style={{ color: 'var(--primary)' }} href={c.url} target="_blank" rel="noreferrer">
                                 {c.title || c.url}

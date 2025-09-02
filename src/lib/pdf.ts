@@ -1,10 +1,8 @@
 import { DailyResult } from './types';
 
 export type DailyPdfOptions = {
-  // If provided, overrides computed percentages from DailyResult
-  averagePct?: number;
-  medianPct?: number;
-  stddevPct?: number;
+  // If provided, overrides computed percentage from DailyResult
+  probabilityPct?: number;
 };
 
 export function generateDailyPdf(result: DailyResult, opts: DailyPdfOptions = {}): Uint8Array {
@@ -15,9 +13,7 @@ export function generateDailyPdf(result: DailyResult, opts: DailyPdfOptions = {}
   const fontSizeBody = 12;
   const leading = 16;
 
-  const avgPct = opts.averagePct ?? Math.round(result.average * 1000) / 10;
-  const medPct = opts.medianPct ?? Math.round(result.median * 1000) / 10;
-  const stdPct = opts.stddevPct ?? Math.round(result.stddev * 1000) / 10;
+  const probPct = opts.probabilityPct ?? Math.round(result.probability * 1000) / 10;
 
   function escapePdfText(s: string): string {
     return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
@@ -44,19 +40,18 @@ export function generateDailyPdf(result: DailyResult, opts: DailyPdfOptions = {}
   const maxChars = 90; // rough width
   lines.push(`Daily Travel Risk (U.S. Non-Citizens) — ${result.date}`);
   lines.push('');
-  lines.push(`Runs: ${result.runCount}`);
-  lines.push(`Average: ${avgPct}% • Median: ${medPct}% • Std Dev: ${stdPct}%`);
+  lines.push(`Probability: ${probPct}%`);
   lines.push('');
-  lines.push('Median Report');
+  lines.push('Report');
   lines.push('');
-  for (const l of (result.medianReport || '').split(/\n+/)) {
+  for (const l of (result.report || '').split(/\n+/)) {
     for (const w of wrapText(l, maxChars)) lines.push(w);
   }
-  if (result.medianCitations?.length) {
+  if (result.citations?.length) {
     lines.push('');
     lines.push('Citations');
     lines.push('');
-    for (const c of result.medianCitations) {
+    for (const c of result.citations) {
       const label = `${c.title ? c.title + ' — ' : ''}${c.url}`;
       for (const w of wrapText('- ' + label, maxChars)) lines.push(w);
     }

@@ -17,19 +17,15 @@ export type RunDetail = {
   model?: string;
 };
 
+// A single-run snapshot for a given UTC day. No averaging or multi-run fields.
 export type DailyResult = {
   date: string; // YYYY-MM-DD
   model: string;
-  runCount: number;
-  average: number; // 0..1
-  median: number; // 0..1
-  stddev: number; // 0..1
-  estimates: number[]; // length = runCount
-  medianReport: string;
-  medianCitations: Citation[];
+  probability: number; // 0..1
+  report: string;
+  citations: Citation[];
   computedAt: string; // ISO timestamp
   destination?: string | null;
-  runsDetailed?: RunDetail[]; // optional: all per-run details
 };
 
 export type ApiResponse<T> =
@@ -40,10 +36,8 @@ export type ApiResponse<T> =
 export type IntradaySample = {
   date: string; // YYYY-MM-DD (UTC)
   at: string; // ISO timestamp for sample moment (UTC)
-  average: number; // 0..1
-  median: number; // 0..1
-  runCount: number;
-  // Optional snapshot of the median report at this moment
+  probability: number; // 0..1
+  // Optional snapshot of the report at this moment
   report?: string;
   citations?: Citation[];
 };

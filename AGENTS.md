@@ -1,7 +1,7 @@
 Project: Travel Risk — Agent Guide
 
 Purpose
-- Daily compute of a single probability (0..1) estimating adverse border outcomes for U.S. non‑citizen travelers on re‑entry within 30 days. Persist results per day, render a tasteful UI, and offer a PDF export.
+- Publish a single probability (0..1) estimating adverse border outcomes for U.S. non‑citizen travelers on re‑entry within 30 days. Persist a snapshot per day, record an intraday series every 10 minutes, render a tasteful UI, and offer a PDF export.
 
 Architecture Snapshot
 - UI (Next.js App Router): `src/app` with client components under `src/app/ui`.
@@ -11,9 +11,10 @@ Architecture Snapshot
 - Persistence: Vercel Blob when tokens are available; local filesystem fallback under `./data`.
 
 Key Flows
-- Daily top-ups: `/api/daily?count=25&batch=3` keeps total runs near `count`, executing up to `batch` per request. Defaults come from env: `DAILY_TARGET_RUNS`, `DAILY_BATCH`.
+- 10‑minute cadence: `/api/tick` computes exactly one run and records an intraday sample; updates the daily snapshot.
+- Daily snapshot: `/api/daily?day=YYYY-MM-DD` ensures a snapshot exists (single run) and returns it.
 - History list: `/api/history` returns sanitized results (no `model` leak) for charting.
-- PDF: `/api/pdf?day=YYYY-MM-DD` ensures a result exists (min 1 run) then returns a minimal PDF including the median report.
+- PDF: `/api/pdf?day=YYYY-MM-DD` ensures a snapshot exists then returns a minimal PDF including the report.
 
 Important Conventions
 - Dates: always UTC date strings `YYYY-MM-DD` (`src/lib/date.ts`).
@@ -24,11 +25,8 @@ Important Conventions
 Environment
 - `OPENAI_API_KEY`: required on Vercel for compute.
 - `DR_MODEL`: e.g., `gpt-5` or a deep-research model string.
-- `DAILY_TARGET_RUNS` (default 25), `DAILY_BATCH` (default 3).
 - `BLOB_READ_WRITE_TOKEN` or `BLOB_READ_TOKEN` enable Blob storage; otherwise local `./data` is used.
 
 Editor/Refactor Notes
 - Keep functions single-purpose with descriptive names.
-- Put non-trivial math in `src/lib/stats.ts`.
 - Touch API routes only as glue; prefer lib extraction instead of expanding handlers.
-

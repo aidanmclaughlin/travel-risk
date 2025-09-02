@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { put, list } from '@vercel/blob';
-import { DailyResult, RunDetail, IntradaySample } from './types';
-import { calcStats, pickNearestToMedian } from './stats';
+import { DailyResult, IntradaySample } from './types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DAILY_DIR = path.join(DATA_DIR, 'daily');
@@ -68,9 +67,6 @@ export async function loadDaily(date: string): Promise<DailyResult | null> {
         try { return (await res.json()) as DailyResult; } catch {}
       }
     }
-    // Attempt reconstruction from run artifacts when top-level JSON is missing or unreadable
-    const reconstructed = await reconstructFromRuns(date);
-    if (reconstructed) return reconstructed;
   }
   await ensureDir();
   const file = path.join(DAILY_DIR, `${date}.json`);
@@ -78,9 +74,7 @@ export async function loadDaily(date: string): Promise<DailyResult | null> {
     const raw = await fs.readFile(file, 'utf8');
     return JSON.parse(raw) as DailyResult;
   } catch {
-    // Local fallback reconstruction
-    const reconstructed = await reconstructFromRuns(date);
-    return reconstructed;
+    return null;
   }
 }
 
@@ -119,73 +113,6 @@ export async function listHistory(): Promise<DailyResult[]> {
   return results;
 }
 
-export async function saveDailyRun(date: string, index: number, run: RunDetail): Promise<void> {
-  const key = `daily/${date}/runs/${String(index).padStart(3, '0')}.json`;
-  const ok = await tryBlobPut(key, JSON.stringify(run, null, 2), 'application/json; charset=utf-8');
-  if (ok) return;
-  await ensureDir();
-  const runDir = path.join(DAILY_DIR, date, 'runs');
-  try { await fs.mkdir(runDir, { recursive: true }); } catch {}
-  const file = path.join(runDir, `${String(index).padStart(3, '0')}.json`);
-  await fs.writeFile(file, JSON.stringify(run, null, 2), 'utf8');
-}
-
-// List all RunDetail artifacts for a date, ordered by index.
-export async function listRunDetails(date: string): Promise<RunDetail[]> {
-  // Try Blob first
-  const prefix = `daily/${date}/runs/`;
-  const listed = await tryBlobList(prefix);
-  const out: RunDetail[] = [];
-  if (listed) {
-    const { blobs } = listed;
-    const files = blobs
-      .filter(b => b.pathname.startsWith(prefix) && b.pathname.endsWith('.json'))
-      .sort((a, b) => a.pathname.localeCompare(b.pathname));
-    for (const f of files) {
-      const res = await fetch(f.url, { cache: 'no-store' });
-      if (!res.ok) continue;
-      try { out.push(await res.json() as RunDetail); } catch {}
-    }
-    return out;
-  }
-  // Local fallback
-  try {
-    const runDir = path.join(DAILY_DIR, date, 'runs');
-    const files = (await fs.readdir(runDir)).filter(f => f.endsWith('.json')).sort();
-    for (const f of files) {
-      try {
-        const raw = await fs.readFile(path.join(runDir, f), 'utf8');
-        out.push(JSON.parse(raw) as RunDetail);
-      } catch {}
-    }
-  } catch {}
-  return out;
-}
-
-// If top-level daily JSON is missing, rebuild it from per-run artifacts and persist it.
-async function reconstructFromRuns(date: string): Promise<DailyResult | null> {
-  const runs = await listRunDetails(date);
-  if (!runs.length) return null;
-  const estimates = runs.map(r => r.probability);
-  const { average, median, stddev } = calcStats(estimates);
-  const chosen = pickNearestToMedian(estimates, runs);
-  const result: DailyResult = {
-    date,
-    model: '',
-    runCount: estimates.length,
-    average,
-    median,
-    stddev,
-    estimates,
-    medianReport: chosen?.report || '',
-    medianCitations: chosen?.citations || [],
-    computedAt: new Date().toISOString(),
-    destination: null,
-    runsDetailed: runs,
-  };
-  await saveDaily(result);
-  return result;
-}
 
 // ---------- Intraday (10-minute) samples ----------
 

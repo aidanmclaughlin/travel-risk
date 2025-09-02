@@ -1,20 +1,19 @@
 Daily Travel Risk — U.S. to Any Country
 =======================================
 
-A tasteful Vercel app that publishes a probability estimate for the risk that a U.S. non‑citizen traveler re‑entering within 30 days experiences an adverse border outcome (e.g., entry denial). The app records a live time‑series every 10 minutes for the current day (UTC), in addition to keeping a per‑day summary and run artifacts. PDF export is available for each day.
+A tasteful Vercel app that publishes a probability estimate for the risk that a U.S. non‑citizen traveler re‑entering within 30 days experiences an adverse border outcome (e.g., entry denial). The app records a live time‑series every 10 minutes for the current day (UTC), and keeps a per‑day snapshot. PDF export is available for each day.
 
 How it works
 ------------
 
-- Compute: Each run produces a probability, a Markdown report, and citations. Aggregates (average/median/stddev) are derived from all runs saved for a day.
-- Top‑ups: The system adds up to `batch` new runs on each tick until `count` total runs exist for the day (default 25).
+- Compute: Each run produces a probability, a Markdown report, and citations. There is exactly one run per data point.
+- Cadence: A scheduler hits `/api/tick` every 10 minutes to create one new data point and update the daily snapshot.
 - Persistence:
-  - Daily summary JSON: `daily/YYYY-MM-DD.json`
-  - Per-run artifacts: `daily/YYYY-MM-DD/runs/NNN.json`
+  - Daily snapshot JSON: `daily/YYYY-MM-DD.json`
   - Intraday samples (10‑minute cadence): `intraday/YYYY-MM-DD/HHMM.json`
 - Resilience:
   - Blob‑first writes (Vercel provides creds); local filesystem fallback only when Blob isn’t available.
-  - Runs persist sequentially; missing daily summaries are auto‑reconstructed from run artifacts.
+  - If a day has no snapshot yet, `/api/daily` computes a single snapshot on demand.
 
 Important: Deep Research calls can take minutes. For production, schedule a daily background call (Vercel Cron) to pre‑compute results. The UI can also trigger a compute on demand.
 
@@ -40,9 +39,6 @@ Create a `.env.local` with at least:
 OPENAI_API_KEY=sk-...
 # Optional: choose a model. Default: gpt-5
 DR_MODEL=gpt-5
-# Optional: daily top-up defaults
-DAILY_TARGET_RUNS=25
-DAILY_BATCH=3
 ## For persistent storage on Vercel (recommended)
 # Add Vercel Blob to the project (Storage tab) to auto-provision tokens
 # Local dev falls back to ./data directory if Blob tokens are not present
@@ -59,29 +55,29 @@ Then open http://localhost:3000.
 Endpoints
 ---------
 
-- `GET /api/tick?batch=1` — single “tick”: append up to `batch` new runs for today (or `day=`) regardless of any daily cap, then record an intraday sample.
+- `GET /api/tick` — single “tick”: compute one run for today (or `day=`), record an intraday sample, and update the daily snapshot.
 - `GET /api/intraday?day=YYYY-MM-DD` — list intraday samples for a day.
-- `GET /api/daily?day=YYYY-MM-DD&count&batch` — compute/top‑up for a day and return the (sanitized) daily summary.
+- `GET /api/daily?day=YYYY-MM-DD` — ensure a daily snapshot exists and return it (sanitized: no model).
 - `GET /api/history` — list daily summaries (sanitized: no model name).
 - `GET /api/pdf?day=YYYY-MM-DD` — generate a minimal PDF for the day.
 
 UI
 --
 
-- The home page renders an intraday line chart of the average (%) over time for the current UTC day.
+- The home page renders an intraday line chart of the single-run probability (%) over time for the current UTC day.
 - Gridlines and axis tick labels are hidden for a cleaner look.
 - Each point is annotated with a small rounded label: `HH:MM • value%`.
-- Clicking a point opens the snapshot of the median report and citations captured at that moment.
+- Clicking a point opens the snapshot report and citations captured at that moment.
 
 Production and scheduling
 -------------------------
 
-On Vercel, set `OPENAI_API_KEY` and optionally `DR_MODEL`. The app ships with a cron that runs every 10 minutes to keep today’s runs topped‑up and record an intraday sample.
+On Vercel, set `OPENAI_API_KEY` and optionally `DR_MODEL`. The app ships with a cron that runs every 10 minutes to record one new intraday sample and update the daily snapshot.
 
 ```
 {
   "crons": [
-    { "path": "/api/tick?batch=1", "schedule": "*/10 * * * *" }
+    { "path": "/api/tick", "schedule": "*/10 * * * *" }
   ]
 }
 ```
@@ -97,19 +93,19 @@ Persistence notes
 
 - Blob is used automatically on Vercel (tokens optional); local dev falls back to `./data`.
 - Storage layout:
-  - `daily/YYYY-MM-DD.json` (summary) + `daily/YYYY-MM-DD/runs/*` (artifacts)
+  - `daily/YYYY-MM-DD.json` (single-run snapshot)
   - `intraday/YYYY-MM-DD/HHMM.json` (10‑minute samples)
 
 Development tips
 ----------------
 
-- Runs can be slow; keep `batch=1` in production. Use `/api/tick` locally to simulate cron.
+- Runs can be slow; use `/api/tick` locally to simulate the 10‑minute cron.
 - To audit storage from your machine: `BLOB_READ_TOKEN=… node scripts/inspect-blob.mjs` and `node scripts/ls-blob.mjs intraday/<today>/`.
 
 PDF export
 ----------
 
-- `GET /api/pdf?day=YYYY-MM-DD` returns a minimal PDF containing headline stats and the median report.
+- `GET /api/pdf?day=YYYY-MM-DD` returns a minimal PDF containing the headline probability and the report.
 
 For Agents
 ----------

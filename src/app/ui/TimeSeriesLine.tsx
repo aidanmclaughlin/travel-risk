@@ -56,7 +56,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     labels,
     datasets: [
       {
-        label: 'Average %',
+        label: 'Risk %',
         data: values,
         borderColor: theme.primary,
         backgroundColor: 'rgba(0,0,0,0)',
@@ -128,7 +128,7 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
         const x = elem.x;
         const y = elem.y;
         const time = labels[i] ?? '';
-        const label = `${time} • ${v}%`;
+        const label = `${time} • ${v.toFixed(2)}%`;
         const metrics = ctx.measureText(label);
         const w = Math.ceil(metrics.width) + padX * 2;
         const h = 18;
