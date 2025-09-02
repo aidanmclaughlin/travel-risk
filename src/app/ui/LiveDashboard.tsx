@@ -120,17 +120,30 @@ export default function LiveDashboard({
               <span style={{ fontSize: 10, lineHeight: 1 }}>i</span>
             </button>
             {showInfo && (
-              <div ref={infoRef} className="absolute left-1/2 -translate-x-1/2 mt-7 z-10 surface-bg surface-border rounded-md shadow-xl p-3 text-left w-[min(92vw,520px)]" role="dialog" aria-modal="false">
-                <div className="text-sm" style={{ color: 'var(--foreground)' }}>
-                  <p>
-                    This dashboard tracks a single probability that a typical U.S. non‑citizen traveler attempting re‑entry within 30 days encounters an adverse border outcome.
-                  </p>
-                  <p className="mt-2">
-                    Every 10 minutes, the system runs a short research prompt via <strong>GPT‑5</strong> to produce a percent estimate, a brief report, and citations. No legal advice; treat the figure as an analytical signal.
-                  </p>
-                  <p className="mt-2">
-                    Contribute on GitHub: <a href="https://github.com/aidanmclaughlin/travel-risk" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--primary)' }}>aidanmclaughlin/travel-risk</a>
-                  </p>
+              <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={() => setShowInfo(false)} />
+                <div className="absolute inset-0 flex items-center justify-center px-4" onClick={() => setShowInfo(false)}>
+                  <div ref={infoRef} className="surface-bg surface-border rounded-2xl shadow-2xl overflow-hidden animate-fade-in-scale max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-5 sm:p-6 md:p-7" style={{ background: 'linear-gradient(180deg, color-mix(in oklab, var(--primary) 6%, transparent), transparent)' }}>
+                      <h2 className="text-xl font-semibold">About This Project</h2>
+                      <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
+                        A single probability for the chance that a typical U.S. non‑citizen traveler attempting re‑entry within 30 days encounters an adverse border outcome.
+                      </p>
+                      <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
+                        Updated every 10 minutes via a short research prompt to <strong>GPT‑5</strong>, returning a calibrated percent, a brief report, and citations. Not legal advice.
+                      </p>
+                      <div className="mt-5 text-sm">
+                        <a href="https://github.com/aidanmclaughlin/travel-risk" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: 'var(--primary)' }}>
+                          Contribute on GitHub → aidanmclaughlin/travel-risk
+                        </a>
+                      </div>
+                      <div className="mt-6 flex justify-end">
+                        <button onClick={() => setShowInfo(false)} className="px-3 py-1.5 rounded-md" style={{ background: 'color-mix(in oklab, var(--foreground) 10%, transparent)' }}>
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
