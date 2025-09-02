@@ -85,6 +85,8 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     // Extra horizontal padding to prevent point labels from clipping at edges
     layout: { padding: { left: 48, right: 48 } },
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    // Make hover forgiving: activate the nearest point along X without requiring strict intersection
+    interaction: { mode: 'nearest', intersect: false, axis: 'x' },
     scales: {
       x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
       y: { beginAtZero: true, grid: { display: false }, ticks: { display: false }, border: { display: false } },
