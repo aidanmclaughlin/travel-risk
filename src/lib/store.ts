@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { put, list } from '@vercel/blob';
+import type { ListBlobResult } from '@vercel/blob';
 import { IntradaySample } from './types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -32,6 +33,19 @@ async function tryBlobList(prefix: string) {
   }
 }
 
+async function listAllBlobs(prefix: string) {
+  const out: { pathname: string; url: string }[] = [];
+  let cursor: string | undefined = undefined;
+  try {
+    do {
+      const resPage: ListBlobResult = await list({ prefix, token: blobToken(), cursor });
+      out.push(...resPage.blobs.map((b) => ({ pathname: b.pathname, url: b.url })));
+      cursor = resPage.cursor || undefined;
+    } while (cursor);
+  } catch {}
+  return out;
+}
+
 async function ensureDir(): Promise<void> {
   try {
     await fs.mkdir(INTRADAY_DIR, { recursive: true });
@@ -56,25 +70,15 @@ export async function saveIntradaySample(sample: IntradaySample): Promise<void> 
 
 export async function listIntraday(date: string): Promise<IntradaySample[]> {
   const prefix = `intraday/${date}/`;
-  const listed = await tryBlobList(prefix);
+  const listed = await listAllBlobs(prefix);
   const out: IntradaySample[] = [];
-  if (listed) {
-    const { blobs } = listed;
-    const files = blobs
+  if (listed && listed.length) {
+    const files = listed
       .filter(b => b.pathname.startsWith(prefix) && b.pathname.endsWith('.json'))
       .sort((a, b) => a.pathname.localeCompare(b.pathname));
-    // Fetch JSONs in parallel for speed on days with many samples
-    const results = await Promise.all(
-      files.map(async (f) => {
-        try {
-          const res = await fetch(f.url, { cache: 'no-store' });
-          if (!res.ok) return null;
-          return (await res.json()) as IntradaySample;
-        } catch {
-          return null;
-        }
-      })
-    );
+    const results = await Promise.all(files.map(async (f) => {
+      try { const res = await fetch(f.url, { cache: 'no-store' }); if (!res.ok) return null; return await res.json() as IntradaySample; } catch { return null; }
+    }));
     for (const r of results) if (r) out.push(r);
     return out;
   }
@@ -84,6 +88,37 @@ export async function listIntraday(date: string): Promise<IntradaySample[]> {
     const files = (await fs.readdir(dir)).filter(f => f.endsWith('.json')).sort();
     for (const f of files) {
       try { const raw = await fs.readFile(path.join(dir, f), 'utf8'); out.push(JSON.parse(raw) as IntradaySample); } catch {}
+    }
+  } catch {}
+  return out;
+}
+
+export async function listIntradayAll(): Promise<IntradaySample[]> {
+  const prefix = `intraday/`;
+  const listed = await listAllBlobs(prefix);
+  const out: IntradaySample[] = [];
+  if (listed && listed.length) {
+    const files = listed
+      .filter(b => /intraday\/\d{4}-\d{2}-\d{2}\/\d{4}\.json$/.test(b.pathname))
+      .sort((a, b) => a.pathname.localeCompare(b.pathname));
+    const results = await Promise.all(files.map(async (f) => {
+      try { const res = await fetch(f.url, { cache: 'no-store' }); if (!res.ok) return null; return await res.json() as IntradaySample; } catch { return null; }
+    }));
+    for (const r of results) if (r) out.push(r);
+    return out;
+  }
+  // Local fallback: traverse all day directories
+  await ensureDir();
+  try {
+    const days = await fs.readdir(INTRADAY_DIR);
+    for (const d of days.sort()) {
+      const dir = path.join(INTRADAY_DIR, d);
+      try {
+        const files = (await fs.readdir(dir)).filter(f => f.endsWith('.json')).sort();
+        for (const f of files) {
+          try { const raw = await fs.readFile(path.join(dir, f), 'utf8'); out.push(JSON.parse(raw) as IntradaySample); } catch {}
+        }
+      } catch {}
     }
   } catch {}
   return out;
