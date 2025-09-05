@@ -62,10 +62,23 @@ export default function LiveDashboard({
   }, [showReport]);
 
   const tsLabels = useMemo(() => intraday.map((s) => new Date(s.at).toISOString().slice(11,16)), [intraday]);
-  // Use two-decimal precision so subtle changes are visible (e.g., 0.58%, 0.62%).
   const tsValues = useMemo(() => intraday.map((s) => Math.round(s.probability * 10000) / 100), [intraday]);
 
-  const pct = latest ? Math.round((latest.probability || 0) * 10000) / 100 : null;
+  const headlineProb = useMemo(() => {
+    const mostRecent = latest ?? (intraday.length ? intraday[intraday.length - 1] : null);
+    if (!mostRecent) return null;
+    const end = new Date(mostRecent.at).getTime();
+    const start = end - 3 * 60 * 60 * 1000; // 3 hours
+    const windowed = intraday.filter((s) => {
+      const t = new Date(s.at).getTime();
+      return t >= start && t <= end;
+    });
+    if (!windowed.length) return mostRecent.probability || 0;
+    const avg = windowed.reduce((a, s) => a + (s.probability || 0), 0) / windowed.length;
+    return avg;
+  }, [intraday, latest]);
+
+  const pct = typeof headlineProb === 'number' ? Math.round(headlineProb * 10000) / 100 : null;
   const updatedStr = useMemo(() => {
     if (!latest?.at) return null;
     try { return new Date(latest.at).toLocaleString(); } catch { return latest.at; }
@@ -128,6 +141,9 @@ export default function LiveDashboard({
                       <h2 className="text-xl font-semibold">About This Project</h2>
                       <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
                         A single probability for the chance that a typical U.S. non‑citizen traveler attempting re‑entry within 30 days encounters an adverse border outcome.
+                      </p>
+                      <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
+                        The headline number shown above is a <strong>3‑hour rolling average</strong> of the 10‑minute estimates. This smooths short‑term noise while staying responsive to current conditions.
                       </p>
                       <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
                         Updated every 10 minutes via a short research prompt to <strong>GPT‑5</strong>, returning a calibrated percent, a brief report, and citations. Not legal advice.
