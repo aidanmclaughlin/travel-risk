@@ -1,11 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { computeOneRun } from '@/lib/daily';
 import { recordIntradayFromRun, recordIntradayBlank } from '@/lib/intraday';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const secret = process.env.CRON_SECRET || '';
+  const auth = req.headers.get('authorization');
+  const url = new URL(req.url);
+  const key = url.searchParams.get('key');
+  const bearer = auth && auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  const authorized = !!secret && (key === secret || bearer === secret);
+  if (!authorized) {
+    return NextResponse.json({ ok: false, error: 'unauthorized' });
+  }
   try {
     // Exactly one run per tick → one intraday sample.
     const run = await computeOneRun();
