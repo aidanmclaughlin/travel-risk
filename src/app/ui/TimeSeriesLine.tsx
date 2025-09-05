@@ -8,9 +8,8 @@ import {
   LineElement,
   Tooltip,
 } from "chart.js";
-import { Line, getElementAtEvent } from "react-chartjs-2";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ActiveElement, Chart as ChartInst } from "chart.js";
+import { Line } from "react-chartjs-2";
+import { useEffect, useMemo, useState } from "react";
 import type { ChartOptions } from "chart.js";
 import type { IntradaySample } from "@/lib/types";
 
@@ -53,33 +52,17 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
     labels,
     datasets: [
       {
-        label: 'Raw %',
-        data: values,
-        borderColor: 'rgba(59,130,246,0.35)',
-        backgroundColor: 'rgba(0,0,0,0)',
-        borderWidth: 1.4,
-        pointRadius: 3,
-        pointHitRadius: 14,
-        pointHoverRadius: 6,
-        pointBackgroundColor: 'rgba(255,255,255,0.85)',
-        pointBorderColor: 'rgba(59,130,246,0.45)',
-        pointBorderWidth: 1.6,
-        tension: 0.25,
-        order: 2,
-      },
-      {
-        label: 'Trend',
+        label: 'Average %',
         data: trend,
-        borderColor: 'rgba(167,139,250,0.98)',
-        borderWidth: 3.2,
+        borderColor: theme.primary,
+        backgroundColor: 'rgba(0,0,0,0)',
+        borderWidth: 2.6,
         pointRadius: 0,
-        pointHoverRadius: 0,
-        borderDash: [6, 4],
         tension: 0.3,
         order: 1,
       },
     ],
-  }), [labels, values, trend]);
+  }), [labels, trend, theme.primary]);
 
   const options = useMemo<ChartOptions<'line'>>(() => ({
     responsive: true,
@@ -115,43 +98,8 @@ export default function TimeSeriesLine({ labels, values, samples, onSampleClick 
       y: { beginAtZero: true, grid: { display: false }, ticks: { display: false }, border: { display: false } },
     },
     animation: { duration: 600, easing: 'easeOutQuart' },
-    interaction: { mode: 'nearest', intersect: true },
-    onHover: (_evt, active, chart) => {
-      const canvas = chart?.canvas as HTMLCanvasElement | undefined;
-      if (canvas) canvas.style.cursor = active && active.length ? 'pointer' : 'default';
-    },
+    interaction: { mode: 'nearest', intersect: false },
   }), [labels, samples]);
 
-  const haloPlugin = useMemo(() => ({
-    id: 'pointHalo',
-    afterDatasetsDraw(chart: import('chart.js').Chart<'line'>) {
-      const meta = chart.getDatasetMeta(0);
-      const { ctx } = chart; ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      ctx.shadowColor = 'rgba(59,130,246,0.35)';
-      ctx.shadowBlur = 8;
-      meta.data.forEach((el) => {
-        const p = el as unknown as { x:number; y:number };
-        if (!p || typeof p.x !== 'number') return;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
-      });
-      ctx.restore();
-    }
-  }), []);
-  const chartRef = useRef<ChartInst<'line'> | null>(null);
-  const captureRef = (instance: unknown) => {
-    chartRef.current = instance as ChartInst<'line'> | null;
-  };
-  const onCanvasClick = (evt: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!onSampleClick) return;
-    const chart = chartRef.current;
-    if (!chart) return;
-    const elements: ActiveElement[] = getElementAtEvent(chart, evt);
-    if (!elements || !elements.length) return;
-    const idx = elements[0].index;
-    const s = samples[idx];
-    if (s) onSampleClick(s, idx);
-  };
-
-  return <Line ref={captureRef} data={data} options={options} plugins={[haloPlugin]} onClick={onCanvasClick} style={{ width: '100%', height: '100%' }} />;
+  return <Line data={data} options={options} style={{ width: '100%', height: '100%' }} />;
 }
